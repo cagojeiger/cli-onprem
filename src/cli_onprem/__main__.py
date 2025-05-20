@@ -1,4 +1,4 @@
-"""Main entry point for the CLI-ONPREM application."""
+"""CLI-ONPREM 애플리케이션의 메인 진입점."""
 
 import typer
 from rich.console import Console
@@ -7,7 +7,7 @@ from cli_onprem.commands import greet, scan
 
 app = typer.Typer(
     name="cli-onprem",
-    help="CLI tool for infrastructure engineers",
+    help="인프라 엔지니어를 위한 CLI 도구",
     add_completion=True,
 )
 
@@ -19,7 +19,7 @@ console = Console()
 
 @app.callback()
 def main(verbose: bool = False) -> None:
-    """CLI-ONPREM - CLI tool for infrastructure engineers."""
+    """CLI-ONPREM - 인프라 엔지니어를 위한 CLI 도구."""
     pass
 
 
