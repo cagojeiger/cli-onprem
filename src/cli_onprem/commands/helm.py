@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
-import argparse
 import logging
 import pathlib
 import subprocess
 import sys
 import tarfile
 import tempfile
-from typing import Any, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Set
 
 import typer
-import yaml
+
+if TYPE_CHECKING:
+    import yaml  # type: ignore
+else:
+    import yaml
 from rich.console import Console
 
 app = typer.Typer(help="Helm 차트 관련 작업 수행")
@@ -22,12 +25,11 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    stream=sys.stderr  # 로그를 stderr로 출력
+    stream=sys.stderr,  # 로그를 stderr로 출력
 )
 logger = logging.getLogger(__name__)
 
 ImageSet = Set[str]
-
 
 
 def extract_chart(chart_archive: pathlib.Path, dest_dir: pathlib.Path) -> pathlib.Path:
@@ -58,7 +60,7 @@ def extract_chart(chart_archive: pathlib.Path, dest_dir: pathlib.Path) -> pathli
 
 def prepare_chart(chart_path: pathlib.Path, workdir: pathlib.Path) -> pathlib.Path:
     """압축된 차트 또는 디렉토리 형태의 차트를 준비합니다.
-    
+
     Args:
         chart_path: .tgz 아카이브 또는 차트 디렉토리 경로
         workdir: 작업 디렉토리
@@ -82,7 +84,7 @@ def prepare_chart(chart_path: pathlib.Path, workdir: pathlib.Path) -> pathlib.Pa
         logger.info(f"디렉토리 차트 사용: {chart_path}")
         return chart_path
 
-    elif chart_path.is_file() and chart_path.suffix in ['.tgz', '.tar.gz']:
+    elif chart_path.is_file() and chart_path.suffix in [".tgz", ".tar.gz"]:
         logger.info(f"압축된 차트 사용: {chart_path}")
         return extract_chart(chart_path, workdir)
 
@@ -111,8 +113,9 @@ def helm_dependency_update(chart_dir: pathlib.Path) -> None:
     logger.info("의존성 업데이트 완료")
 
 
-def helm_template(chart_dir: pathlib.Path, values_files: List[pathlib.Path]) -> str:
-    """차트 디렉토리에 대해 helm template 명령을 실행하고 렌더링된 매니페스트를 반환합니다.
+def helm_template(chart_dir: pathlib.Path, values_files: list[pathlib.Path]) -> str:
+    """차트 디렉토리에 대해 helm template 명령을 실행하고 렌더링된 매니페스트를
+    반환합니다.
 
     Args:
         chart_dir: Helm 차트 디렉토리
@@ -128,7 +131,9 @@ def helm_template(chart_dir: pathlib.Path, values_files: List[pathlib.Path]) -> 
     cmd: list[str] = ["helm", "template", "dummy", str(chart_dir)]
 
     if values_files:
-        logger.info(f"지정된 values 파일 사용: {', '.join(str(v) for v in values_files)}")
+        logger.info(
+            f"지정된 values 파일 사용: {', '.join(str(v) for v in values_files)}"
+        )
         for vf in values_files:
             abs_path = vf if vf.is_absolute() else pathlib.Path.cwd() / vf
             if not abs_path.exists():
@@ -149,8 +154,9 @@ def helm_template(chart_dir: pathlib.Path, values_files: List[pathlib.Path]) -> 
     return result.stdout
 
 
-
-def _add_repo_tag_digest(images: ImageSet, repo: str, tag: str | None, digest: str | None) -> None:
+def _add_repo_tag_digest(
+    images: ImageSet, repo: str, tag: str | None, digest: str | None
+) -> None:
     """저장소와 태그 또는 다이제스트를 결합하여 이미지 세트에 추가합니다.
 
     Args:
@@ -197,9 +203,12 @@ def _traverse(obj: Any, images: ImageSet) -> None:
                 full_repo = repo
 
             if isinstance(tag, str) or isinstance(digest, str):
-                _add_repo_tag_digest(images, full_repo,
-                                     tag if isinstance(tag, str) else None,
-                                     digest if isinstance(digest, str) else None)
+                _add_repo_tag_digest(
+                    images,
+                    full_repo,
+                    tag if isinstance(tag, str) else None,
+                    digest if isinstance(digest, str) else None,
+                )
 
         for value in obj.values():
             _traverse(value, images)
@@ -231,27 +240,33 @@ def normalize_image_name(image: str) -> str:
         nvcr.io/nvidia → nvcr.io/nvidia:latest
         nvcr.io/nvidia/cuda → nvcr.io/nvidia/cuda:latest
     """
-    has_digest = '@' in image
+    has_digest = "@" in image
     digest_part = ""
 
     if has_digest:
-        base_part, digest_part = image.split('@', 1)
+        base_part, digest_part = image.split("@", 1)
         image = base_part
 
-    has_tag = ':' in image and not (':' in image.split('/', 1)[0] if '/' in image else False)
+    has_tag = ":" in image and not (
+        ":" in image.split("/", 1)[0] if "/" in image else False
+    )
     tag_part = "latest"  # 기본값
 
     if has_tag:
-        image_part, tag_part = image.split(':', 1)
+        image_part, tag_part = image.split(":", 1)
         image = image_part
 
     has_domain = False
     domain_part = ""
     remaining_part = image
 
-    if '/' in image:
-        domain_candidate, remaining = image.split('/', 1)
-        if ('.' in domain_candidate) or (domain_candidate == 'localhost') or (':' in domain_candidate):
+    if "/" in image:
+        domain_candidate, remaining = image.split("/", 1)
+        if (
+            ("." in domain_candidate)
+            or (domain_candidate == "localhost")
+            or (":" in domain_candidate)
+        ):
             has_domain = True
             domain_part = domain_candidate
             remaining_part = remaining
@@ -259,7 +274,7 @@ def normalize_image_name(image: str) -> str:
     if has_domain:
         normalized = f"{domain_part}/{remaining_part}"
     else:
-        if '/' in remaining_part:
+        if "/" in remaining_part:
             normalized = f"docker.io/{remaining_part}"
         else:
             normalized = f"docker.io/library/{remaining_part}"
@@ -270,7 +285,7 @@ def normalize_image_name(image: str) -> str:
         return f"{normalized}:{tag_part}"
 
 
-def collect_images(rendered_yaml: str) -> List[str]:
+def collect_images(rendered_yaml: str) -> list[str]:
     """렌더링된 YAML 문서에서 이미지 참조를 파싱하고 중복 제거된 정렬 목록을 반환합니다.
 
     Args:
@@ -296,27 +311,31 @@ def collect_images(rendered_yaml: str) -> List[str]:
     return sorted(normalized_images)
 
 
-
 CHART_ARG = typer.Argument(..., help="Helm 차트 아카이브(.tgz) 또는 디렉토리 경로")
 VALUES_OPTION = typer.Option(
-    [], "--values", "-f", help="추가 values.yaml 파일 경로", multiple=True
+    None, "--values", "-f", help="추가 values.yaml 파일 경로", default_factory=list
 )
-QUIET_OPTION = typer.Option(False, "--quiet", "-q", help="로그 메시지 출력 안함 (stderr)")
+QUIET_OPTION = typer.Option(
+    False, "--quiet", "-q", help="로그 메시지 출력 안함 (stderr)"
+)
 JSON_OPTION = typer.Option(False, "--json", help="JSON 배열 형식으로 출력")
-RAW_OPTION = typer.Option(False, "--raw", help="이미지 이름 표준화 없이 원본 그대로 출력")
+RAW_OPTION = typer.Option(
+    False, "--raw", help="이미지 이름 표준화 없이 원본 그대로 출력"
+)
 
 
 @app.command()
 def extract_images(
     chart: pathlib.Path = CHART_ARG,
-    values: List[pathlib.Path] = VALUES_OPTION,
+    values: list[pathlib.Path] = VALUES_OPTION,
     quiet: bool = QUIET_OPTION,
     json_output: bool = JSON_OPTION,
     raw: bool = RAW_OPTION,
 ) -> None:
     """Helm 차트에서 사용되는 Docker 이미지 참조를 추출합니다.
 
-    .tgz 형식의 압축된 차트 아카이브 또는 압축이 풀린 차트 디렉토리를 처리할 수 있습니다.
+    .tgz 형식의 압축된 차트 아카이브 또는 압축이 풀린 차트 디렉토리를
+    처리할 수 있습니다.
     추가 values 파일을 지정하여 이미지 버전 등의 설정을 적용할 수 있습니다.
 
     출력은 기본적으로 각 줄마다 하나의 이미지 참조를 표시하며,
@@ -344,6 +363,7 @@ def extract_images(
                 logger.info(f"이미지 추출 완료: {len(images)}개 발견")
                 if json_output:
                     import json
+
                     console.print(json.dumps(images))
                 else:
                     for image in images:
