@@ -56,7 +56,9 @@ printf "▶ 조각 병합...\\n"
 cat parts/* > archive.tar.gz
 
 printf "▶ 압축 해제...\\n"
-tar --no-same-owner -xzvf archive.tar.gz  # 원본 파일·디렉터리 복원
+cd ..
+tar --no-same-owner -xzvf "$(basename "$(pwd)")"/archive.tar.gz  # 원본 파일·디렉터리 복원
+cd "$(basename "$(pwd)")"
 
 printf "▶ 중간 파일 정리...\\n"
 rm -f archive.tar.gz                 # 병합본 제거
@@ -64,7 +66,7 @@ rm -f archive.tar.gz                 # 병합본 제거
 if [ "$PURGE" -eq 1 ]; then
   printf "▶ .pack 폴더 삭제(--purge)...\\n"
   cd ..
-  rm -rf "$(basename "$0")"/..       # 현재 .pack 디렉터리 전체 삭제
+  rm -rf "$(basename "$(pwd)")"      # .pack 디렉터리 전체 삭제
 fi
 
 printf "🎉 복원 완료\\n"
