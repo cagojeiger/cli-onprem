@@ -3,7 +3,7 @@
 import typer
 from rich.console import Console
 
-from cli_onprem.commands import greet, scan
+from cli_onprem.commands import docker_tar, greet, scan
 
 app = typer.Typer(
     name="cli-onprem",
@@ -13,6 +13,7 @@ app = typer.Typer(
 
 app.add_typer(greet.app, name="greet")
 app.add_typer(scan.app, name="scan")
+app.add_typer(docker_tar.app, name="docker-tar")
 
 console = Console()
 
