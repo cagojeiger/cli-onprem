@@ -94,7 +94,7 @@ jobs:
 
 1. 코드 변경 및 커밋
    - 커밋 메시지는 [Conventional Commits](https://www.conventionalcommits.org/) 형식을 따릅니다.
-   - 자세한 내용은 [버전 관리 문서](versioning_ko.md)를 참조하세요.
+   - 자세한 내용은 [버전 관리 문서](versioning.md)를 참조하세요.
 
 2. PR 생성 및 병합
    - 변경 사항을 PR로 생성하고 main 브랜치에 병합합니다.
