@@ -27,7 +27,9 @@ def run_command(cmd: List[str], cwd: Optional[str] = None) -> bool:
         subprocess.run(cmd, check=True, cwd=cwd)
         return True
     except subprocess.CalledProcessError as e:
-        console.print(f"[bold red]Error: 명령어 실행 실패 (코드 {e.returncode})[/bold red]")
+        console.print(
+            f"[bold red]Error: 명령어 실행 실패 (코드 {e.returncode})[/bold red]"
+        )
         return False
 
 
@@ -86,7 +88,9 @@ def pack(
     parts_dir = f"{output_dir}/parts"
 
     if os.path.exists(output_dir):
-        console.print(f"[bold red]오류: 출력 디렉터리 {output_dir}가 이미 존재합니다[/bold red]")
+        console.print(
+            f"[bold red]오류: 출력 디렉터리 {output_dir}가 이미 존재합니다[/bold red]"
+        )
         raise typer.Exit(code=1)
 
     console.print(f"[bold blue]► 출력 디렉터리 {output_dir} 생성 중...[/bold blue]")
@@ -94,33 +98,37 @@ def pack(
 
     archive_path = f"{output_dir}/archive.tar.gz"
     console.print(f"[bold blue]► {basename} 압축 중...[/bold blue]")
-    
+
     if path.is_dir():
         cmd = ["tar", "-czvf", archive_path, "-C", str(path.parent), basename]
     else:
         cmd = ["tar", "-czvf", archive_path, "-C", str(path.parent), basename]
-        
+
     if not run_command(cmd):
         console.print("[bold red]오류: 압축 실패[/bold red]")
         raise typer.Exit(code=1)
 
-    console.print(f"[bold blue]► 압축 파일을 {chunk_size} 크기로 분할 중...[/bold blue]")
+    console.print(
+        f"[bold blue]► 압축 파일을 {chunk_size} 크기로 분할 중...[/bold blue]"
+    )
     split_cmd = [
-        "split", 
-        "-b", chunk_size, 
+        "split",
+        "-b",
+        chunk_size,
         archive_path,
         f"{parts_dir}/",
-        "--numeric-suffixes=0", 
+        "--numeric-suffixes=0",
         "--suffix-length=4",
-        "-a", "4"
+        "-a",
+        "4",
     ]
-    
+
     if not run_command(split_cmd):
         console.print("[bold red]오류: 파일 분할 실패[/bold red]")
         raise typer.Exit(code=1)
 
     os.remove(archive_path)
-    
+
     console.print("[bold blue]► 무결성 해시 파일 생성 중...[/bold blue]")
     hash_cmd = f"cd {output_dir} && sha256sum parts/* > manifest.sha256"
     if not run_command(["sh", "-c", hash_cmd]):
@@ -143,14 +151,21 @@ def pack(
     console.print(f"[green]복원하려면: cd {escape(output_dir)} && ./restore.sh[/green]")
 
 
+PACK_DIR_ARG = typer.Argument(..., help="복원할 .pack 디렉터리 경로")
+
+
 @app.command()
 def restore(
-    pack_dir: Path = typer.Argument(..., help="복원할 .pack 디렉터리 경로"),
+    pack_dir: Path = PACK_DIR_ARG,
     purge: bool = PURGE_OPTION,
 ) -> None:
     """압축된 파일을 복원합니다."""
     if not pack_dir.exists() or not pack_dir.is_dir():
-        console.print(f"[bold red]오류: {pack_dir}가 존재하지 않거나 디렉터리가 아닙니다[/bold red]")
+        error_msg = (
+            f"[bold red]오류: {pack_dir}가 존재하지 않거나 "
+            f"디렉터리가 아닙니다[/bold red]"
+        )
+        console.print(error_msg)
         raise typer.Exit(code=1)
 
     if not (pack_dir / "restore.sh").exists():
@@ -161,7 +176,7 @@ def restore(
     if purge:
         cmd.append("--purge")
 
-    console.print(f"[bold blue]► 복원 스크립트 실행 중...[/bold blue]")
+    console.print("[bold blue]► 복원 스크립트 실행 중...[/bold blue]")
     if not run_command(cmd, cwd=str(pack_dir)):
         console.print("[bold red]오류: 복원 실패[/bold red]")
         raise typer.Exit(code=1)
