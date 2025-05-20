@@ -87,7 +87,10 @@ def prepare_chart(chart_path: pathlib.Path, workdir: pathlib.Path) -> pathlib.Pa
         return extract_chart(chart_path, workdir)
 
     else:
-        raise ValueError(f"지원하지 않는 차트 형식입니다: {chart_path} (디렉토리 또는 .tgz 파일만 지원)")
+        raise ValueError(
+            f"지원하지 않는 차트 형식입니다: {chart_path} "
+            f"(디렉토리 또는 .tgz 파일만 지원)"
+        )
 
 
 def helm_dependency_update(chart_dir: pathlib.Path) -> None:
@@ -296,7 +299,7 @@ def collect_images(rendered_yaml: str) -> List[str]:
 
 CHART_ARG = typer.Argument(..., help="Helm 차트 아카이브(.tgz) 또는 디렉토리 경로")
 VALUES_OPTION = typer.Option(
-    None, "--values", "-f", help="추가 values.yaml 파일 경로", multiple=True
+    [], "--values", "-f", help="추가 values.yaml 파일 경로", multiple=True
 )
 QUIET_OPTION = typer.Option(False, "--quiet", "-q", help="로그 메시지 출력 안함 (stderr)")
 JSON_OPTION = typer.Option(False, "--json", help="JSON 배열 형식으로 출력")
@@ -350,13 +353,13 @@ def extract_images(
                 raise typer.Exit(code=1)
         except FileNotFoundError as e:
             console.print(f"[bold red]오류: 파일을 찾을 수 없습니다: {e}[/bold red]")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from e
         except ValueError as e:
             console.print(f"[bold red]오류: 잘못된 입력 값: {e}[/bold red]")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from e
         except subprocess.CalledProcessError as e:
             console.print(f"[bold red]오류: 명령어 실행 실패: {e}[/bold red]")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from e
         except Exception as e:
             console.print(f"[bold red]오류 발생: {e}[/bold red]")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
