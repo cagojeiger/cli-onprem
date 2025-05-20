@@ -1,6 +1,7 @@
 """CLI-ONPREM을 위한 Docker 이미지 tar 명령어."""
 
 import subprocess
+import time
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
@@ -106,12 +107,41 @@ def check_image_exists(reference: str) -> bool:
         return False
 
 
-def pull_image(reference: str, quiet: bool = False) -> Tuple[bool, str]:
+def pull_image(
+    reference: str, quiet: bool = False, max_retries: int = 3
+) -> Tuple[bool, str]:
     """이미지를 Docker Hub에서 가져옵니다."""
     if not quiet:
         console.print(f"[yellow]이미지 {reference} 다운로드 중...[/yellow]")
     cmd = ["docker", "pull", reference]
-    return run_docker_command(cmd)
+
+    retry_count = 0
+    last_error = ""
+
+    while retry_count <= max_retries:
+        success, error = run_docker_command(cmd)
+        if success:
+            return True, ""
+
+        last_error = error
+        if isinstance(error, bytes):
+            error_str = error.decode("utf-8", errors="replace")
+        else:
+            error_str = str(error)
+
+        if "timeout" in error_str.lower() and retry_count < max_retries:
+            retry_count += 1
+            wait_time = 2**retry_count  # 지수 백오프 (2, 4, 8초)
+            if not quiet:
+                console.print(
+                    f"[yellow]이미지 다운로드 타임아웃, {retry_count}/{max_retries} "
+                    f"재시도 중 ({wait_time}초 대기)...[/yellow]"
+                )
+            time.sleep(wait_time)
+        else:
+            break
+
+    return False, last_error
 
 
 def run_docker_command(
