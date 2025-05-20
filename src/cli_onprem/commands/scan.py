@@ -16,9 +16,7 @@ PATH_ARG = typer.Argument(..., help="스캔할 디렉토리 경로")
 @app.command()
 def directory(
     path: Path = PATH_ARG,
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="상세 출력 활성화"
-    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="상세 출력 활성화"),
 ) -> None:
     """디렉토리를 스캔하고 내용에 대한 보고서를 생성합니다."""
     if not path.exists():
