@@ -1,74 +1,74 @@
 # CLI-ONPREM
 
-A Typer-based Python CLI tool for infrastructure engineers to automate repetitive tasks.
+인프라 엔지니어를 위한 반복 작업 자동화를 위한 Typer 기반 Python CLI 도구입니다.
 
-## Features
+## 기능
 
-- Simple, intuitive command-line interface
-- Rich text output with colors and formatting
-- Directory scanning and reporting
-- Comprehensive documentation
+- 간단하고 직관적인 명령줄 인터페이스
+- 색상과 서식이 있는 풍부한 텍스트 출력
+- 디렉토리 스캔 및 보고
+- 포괄적인 문서화
 
-## Installation
+## 설치
 
 ```bash
-# Install from PyPI
+# PyPI에서 설치
 pipx install cli-onprem
 
-# Or install from source
-git clone https://github.com/cagojeiger/cli.git
-cd cli
+# 또는 소스에서 설치
+git clone https://github.com/cagojeiger/cli-onprem.git
+cd cli-onprem
 uv sync --locked --all-extras --dev
 pip install -e .
 ```
 
-## Usage
+## 사용법
 
 ```bash
-# Get help
+# 도움말 보기
 cli-onprem --help
 
-# Greet command
-cli-onprem greet hello [NAME]
+# 인사 명령어
+cli-onprem greet hello [이름]
 
-# Scan directory
-cli-onprem scan directory PATH [--verbose]
+# 디렉토리 스캔
+cli-onprem scan directory 경로 [--verbose]
 ```
 
-## Development
+## 개발
 
-This project uses:
-- `uv` for package management
-- `pre-commit` hooks for code quality
-- `ruff`, `black`, and `mypy` for linting and formatting
-- GitHub Actions for CI/CD
+이 프로젝트는 다음을 사용합니다:
+- 패키지 관리를 위한 `uv`
+- 코드 품질을 위한 `pre-commit` 훅
+- 린팅 및 포맷팅을 위한 `ruff`, `black`, `mypy`
+- CI/CD를 위한 GitHub Actions
 
-### Setup Development Environment
+### 개발 환경 설정
 
 ```bash
-# Clone the repository
-git clone https://github.com/cagojeiger/cli.git
-cd cli
+# 저장소 복제
+git clone https://github.com/cagojeiger/cli-onprem.git
+cd cli-onprem
 
-# Install dependencies
+# 의존성 설치
 uv sync --locked --all-extras --dev
 
-# Install pre-commit hooks
+# pre-commit 훅 설치
 pre-commit install
 ```
 
-### Running Tests
+### 테스트 실행
 
 ```bash
 pytest
 ```
 
-## Documentation
+## 문서
 
-Detailed documentation for each command is available in the `docs/` directory:
-- [Greet Command](docs/greet.md)
-- [Scan Command](docs/scan.md)
+각 명령어에 대한 자세한 문서는 `docs/` 디렉토리에서 확인할 수 있습니다:
+- [인사 명령어](docs/greet_ko.md)
+- [스캔 명령어](docs/scan_ko.md)
 
-## License
+## 라이선스
 
-MIT License
+MIT 라이선스

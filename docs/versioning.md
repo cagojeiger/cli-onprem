@@ -1,0 +1,111 @@
+# 버전 관리 방식
+
+이 문서는 CLI-ONPREM 프로젝트의 버전 관리 방식을 설명합니다.
+
+## 시맨틱 버저닝
+
+CLI-ONPREM은 [시맨틱 버저닝(SemVer)](https://semver.org/lang/ko/) 규칙을 따릅니다:
+
+- **메이저 버전(X.y.z)**: 호환성이 깨지는 변경사항
+- **마이너 버전(x.Y.z)**: 호환성을 유지하는 기능 추가
+- **패치 버전(x.y.Z)**: 버그 수정
+
+## 커밋 메시지 기반 자동 버전 관리
+
+CLI-ONPREM은 [Conventional Commits](https://www.conventionalcommits.org/) 형식의 커밋 메시지를 사용하여 자동으로 버전을 관리합니다.
+
+### 커밋 메시지 형식
+
+```
+<타입>[!]: <설명>
+
+[본문]
+
+[꼬리말]
+```
+
+### 주요 커밋 타입
+
+- `feat`: 새로운 기능 추가 (마이너 버전 증가)
+- `fix`: 버그 수정 (패치 버전 증가)
+- `docs`: 문서 변경
+- `style`: 코드 스타일 변경 (포맷팅, 세미콜론 누락 등)
+- `refactor`: 코드 리팩토링
+- `perf`: 성능 개선
+- `test`: 테스트 추가 또는 수정
+- `build`: 빌드 시스템 변경
+- `ci`: CI 설정 변경
+- `chore`: 기타 변경사항
+
+### 버전 증가 규칙
+
+- **메이저 버전 증가**: 
+  - `feat!:` 또는 `fix!:` 등 타입 뒤에 `!`가 붙은 경우
+  - 커밋 메시지 본문에 `BREAKING CHANGE:`가 포함된 경우
+
+- **마이너 버전 증가**:
+  - `feat:` 타입의 커밋이 있는 경우
+
+- **패치 버전 증가**:
+  - `fix:` 타입의 커밋이 있는 경우
+
+### 예시
+
+```bash
+# 마이너 버전 증가 (0.1.0 → 0.2.0)
+git commit -m "feat: 새로운 명령어 추가"
+
+# 패치 버전 증가 (0.1.0 → 0.1.1)
+git commit -m "fix: 오류 수정"
+
+# 메이저 버전 증가 (0.1.0 → 1.0.0)
+git commit -m "feat!: 호환성이 깨지는 변경사항"
+# 또는
+git commit -m "feat: 새 기능 추가
+
+BREAKING CHANGE: API 변경"
+```
+
+## 버전 관리 설정
+
+버전 관리는 `python-semantic-release` 패키지를 사용하여 자동화됩니다. 설정은 `pyproject.toml` 파일에 정의되어 있습니다:
+
+```toml
+[tool.semantic_release]
+version_variable = ["pyproject.toml:project.version"]
+build_command = "python -m build"
+commit_message = "{version}"
+commit_parser = "conventional"
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.branches.dev]
+match = "devin/.*"
+prerelease = true
+
+[tool.semantic_release.changelog_sections]
+feat = "기능"
+fix = "버그 수정"
+docs = "문서"
+style = "스타일"
+refactor = "리팩토링"
+perf = "성능"
+test = "테스트"
+build = "빌드"
+ci = "CI"
+chore = "기타"
+```
+
+## 변경 이력 관리
+
+모든 변경 사항은 `CHANGELOG.md` 파일에 자동으로 기록됩니다. 이 파일은 `python-semantic-release`에 의해 자동으로 업데이트됩니다.
+
+## 릴리스 프로세스
+
+1. 개발 브랜치에서 작업 수행
+2. Conventional Commits 형식으로 커밋
+3. PR 생성 및 main 브랜치에 병합
+4. GitHub Actions가 자동으로 버전 업데이트 및 릴리스 생성
+5. PyPI에 자동 배포

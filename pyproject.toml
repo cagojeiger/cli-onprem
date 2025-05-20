@@ -36,6 +36,8 @@ dev = [
     "pytest",
     "pyupgrade",
     "build",
+    "python-semantic-release",
+    "twine",
 ]
 
 [project.scripts]
@@ -67,3 +69,30 @@ disallow_untyped_decorators = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+
+[tool.semantic_release]
+version_variable = ["pyproject.toml:project.version"]
+build_command = "python -m build"
+commit_message = "{version}"
+commit_parser = "conventional"
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.branches.dev]
+match = "devin/.*"
+prerelease = true
+changelog_file = "CHANGELOG.md"
+changelog_sections = [
+    ["feat", "기능", "새로운 기능이 추가되었습니다"],
+    ["fix", "버그 수정", "버그가 수정되었습니다"],
+    ["docs", "문서", "문서가 업데이트되었습니다"],
+    ["style", "스타일", "코드 스타일이 변경되었습니다"],
+    ["refactor", "리팩토링", "코드가 리팩토링되었습니다"],
+    ["perf", "성능", "성능이 개선되었습니다"],
+    ["test", "테스트", "테스트가 추가되었습니다"],
+    ["build", "빌드", "빌드 시스템이 변경되었습니다"],
+    ["ci", "CI", "CI 설정이 변경되었습니다"],
+    ["chore", "기타", "기타 변경사항이 있습니다"]
+]

@@ -1,33 +1,33 @@
-# Greet Command
+# 인사 명령어
 
-The `greet` command provides a simple way to output a greeting message.
+`greet` 명령어는 인사 메시지를 출력하는 간단한 방법을 제공합니다.
 
-## Usage
+## 사용법
 
 ```bash
-cli-onprem greet hello [NAME]
+cli-onprem greet hello [이름]
 ```
 
-## Options
+## 옵션
 
-- `NAME`: Optional. The name of the person to greet. If not provided, defaults to "world".
+- `이름`: 선택 사항. 인사할 사람의 이름. 제공하지 않으면 기본값은 "world"입니다.
 
-## Examples
+## 예제
 
 ```bash
-# Greet with default message
+# 기본 메시지로 인사
 cli-onprem greet hello
-# Output: Hello, world!
+# 출력: Hello, world!
 
-# Greet a specific person
+# 특정 사람에게 인사
 cli-onprem greet hello Alice
-# Output: Hello, Alice!
+# 출력: Hello, Alice!
 ```
 
-## Purpose
+## 목적
 
-This command serves as an MVP skeleton validation tool to quickly verify:
-- Typer decorator functionality
-- Automatic help generation
-- ANSI color output via Rich
-- Complete pre-commit → mypy → pytest → CI pipeline
+이 명령어는 다음을 빠르게 검증하기 위한 MVP 스켈레톤 검증 도구로 사용됩니다:
+- Typer 데코레이터 기능
+- 자동 도움말 생성
+- Rich를 통한 ANSI 색상 출력
+- 완전한 pre-commit → mypy → pytest → CI 파이프라인
