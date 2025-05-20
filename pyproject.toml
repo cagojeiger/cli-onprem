@@ -75,7 +75,7 @@ version_variable = ["pyproject.toml:project.version"]
 build_command = "python -m build"
 commit_message = "{version}"
 commit_parser = "conventional"
-repository_url = "https://github.com/cagojeiger/cli"
+repository_url = "cagojeiger/cli"
 
 [tool.semantic_release.branches.main]
 match = "main"
