@@ -39,6 +39,7 @@ dev = [
     "build",
     "python-semantic-release",
     "twine",
+    "types-PyYAML",
 ]
 
 [project.scripts]
