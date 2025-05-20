@@ -27,9 +27,9 @@ def run_command(cmd: List[str], cwd: Optional[str] = None) -> bool:
         subprocess.run(cmd, check=True, cwd=cwd)
         return True
     except subprocess.CalledProcessError as e:
-        console.print(
-            f"[bold red]Error: 명령어 실행 실패 (코드 {e.returncode})[/bold red]"
-        )
+        msg = "[bold red]Error: 명령어 실행 실패 (코드 "
+        error_msg = f"{msg}{e.returncode})[/bold red]"
+        console.print(error_msg)
         return False
 
 
@@ -88,9 +88,9 @@ def pack(
     parts_dir = f"{output_dir}/parts"
 
     if os.path.exists(output_dir):
-        console.print(
-            f"[bold red]오류: 출력 디렉터리 {output_dir}가 이미 존재합니다[/bold red]"
-        )
+        msg = "[bold red]오류: 출력 디렉터리 "
+        error_msg = f"{msg}{output_dir}가 이미 존재합니다[/bold red]"
+        console.print(error_msg)
         raise typer.Exit(code=1)
 
     console.print(f"[bold blue]► 출력 디렉터리 {output_dir} 생성 중...[/bold blue]")
@@ -108,9 +108,8 @@ def pack(
         console.print("[bold red]오류: 압축 실패[/bold red]")
         raise typer.Exit(code=1)
 
-    console.print(
-        f"[bold blue]► 압축 파일을 {chunk_size} 크기로 분할 중...[/bold blue]"
-    )
+    msg = f"[bold blue]► 압축 파일을 {chunk_size} 크기로 분할 중...[/bold blue]"
+    console.print(msg)
     split_cmd = [
         "split",
         "-b",
@@ -169,7 +168,8 @@ def restore(
         raise typer.Exit(code=1)
 
     if not (pack_dir / "restore.sh").exists():
-        console.print(f"[bold red]오류: {pack_dir}에 restore.sh가 없습니다[/bold red]")
+        error_msg = f"[bold red]오류: {pack_dir}에 restore.sh가 없습니다[/bold red]"
+        console.print(error_msg)
         raise typer.Exit(code=1)
 
     cmd = ["./restore.sh"]
