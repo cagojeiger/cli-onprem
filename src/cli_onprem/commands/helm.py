@@ -8,14 +8,10 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from typing import TYPE_CHECKING, Any, Set
+from typing import Any, Set
 
 import typer
-
-if TYPE_CHECKING:
-    import yaml  # type: ignore
-else:
-    import yaml
+import yaml
 from rich.console import Console
 
 app = typer.Typer(help="Helm 차트 관련 작업 수행")
