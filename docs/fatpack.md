@@ -1,0 +1,81 @@
+# FatPack 명령어
+
+`fatpack` 명령어는 파일 또는 디렉터리를 압축하고 지정된 크기의 조각으로 분할하여 나중에 쉽게 복원할 수 있는 기능을 제공합니다.
+
+## 사용법
+
+```bash
+# 압축 및 분할
+cli-onprem fatpack pack <경로> [--chunk-size <크기>]
+
+# 복원
+cli-onprem fatpack restore <경로.pack> [--purge]
+# 또는
+<경로.pack>/restore.sh [--purge]
+```
+
+## 서브커맨드
+
+### pack
+
+파일 또는 디렉터리를 압축하고 분할하여 저장합니다.
+
+#### 옵션
+
+- `<경로>`: 필수. 압축할 파일 또는 디렉터리 경로.
+- `--chunk-size`, `-c <크기>`: 선택 사항. 조각 크기 (예: `3G`, `500M`). 기본값: `3G`.
+
+#### 산출물 구조
+
+```
+<basename>.pack/
+├─ parts/0000.part …
+├─ manifest.sha256
+├─ restore.sh
+├─ <압축크기>_MB (빈 파일)
+```
+
+### restore
+
+압축된 파일을 복원합니다.
+
+#### 옵션
+
+- `<경로.pack>`: 필수. 복원할 .pack 디렉터리 경로.
+- `--purge`: 선택 사항. 성공 복원 시 .pack 폴더 삭제.
+
+## 예제
+
+```bash
+# 기본 압축 (3GB 조각 크기)
+cli-onprem fatpack pack 대용량_영상.mkv
+# 출력: 대용량_영상.mkv.pack/ 디렉터리 생성
+
+# 조각 크기 지정
+cli-onprem fatpack pack 데이터_폴더 -c 500M
+# 출력: 데이터_폴더.pack/ 디렉터리 생성
+
+# 복원 (중간 파일만 정리)
+cli-onprem fatpack restore 대용량_영상.mkv.pack
+# 또는
+cd 대용량_영상.mkv.pack && ./restore.sh
+# 출력: 대용량_영상.mkv 복원됨, .pack 디렉터리는 남아있음
+
+# 복원 후 완전 정리
+cli-onprem fatpack restore 대용량_영상.mkv.pack --purge
+# 또는
+cd 대용량_영상.mkv.pack && ./restore.sh --purge
+# 출력: 대용량_영상.mkv 복원됨, .pack 디렉터리는 삭제됨
+```
+
+## 무결성 검증
+
+모든 조각 파일에 대해 SHA256 해시가 생성되어 `manifest.sha256` 파일에 저장됩니다. 복원 과정에서 이 해시를 사용하여 자동으로 무결성을 검증합니다.
+
+## 오류 처리
+
+다음과 같은 경우 명령어는 오류 코드(1)와 함께 종료됩니다:
+- 지정된 입력 경로가 존재하지 않는 경우
+- 출력 디렉터리가 이미 존재하는 경우
+- 압축, 분할 또는 해시 생성 중 오류가 발생한 경우
+- 무결성 검증에 실패한 경우 (복원 시)
