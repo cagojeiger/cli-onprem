@@ -72,7 +72,7 @@ python_files = "test_*.py"
 
 [tool.semantic_release]
 version_variable = ["pyproject.toml:project.version"]
-branch = "main"
+branch = "devin/1747749110-semantic-release-setup"
 upload_to_pypi = true
 upload_to_release = true
 build_command = "python -m build"
