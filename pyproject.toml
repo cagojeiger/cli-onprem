@@ -72,12 +72,17 @@ python_files = "test_*.py"
 
 [tool.semantic_release]
 version_variable = ["pyproject.toml:project.version"]
-branch = ".*"
-upload_to_pypi = true
-upload_to_release = true
 build_command = "python -m build"
 commit_message = "{version}"
 commit_parser = "conventional"
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.branches.dev]
+match = "devin/.*"
+prerelease = true
 changelog_file = "CHANGELOG.md"
 changelog_sections = [
     ["feat", "기능", "새로운 기능이 추가되었습니다"],
