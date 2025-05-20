@@ -88,10 +88,10 @@ def pack(
     parts_dir = f"{output_dir}/parts"
 
     if os.path.exists(output_dir):
-        msg = "[bold red]오류: 출력 디렉터리 "
-        error_msg = f"{msg}{output_dir}가 이미 존재합니다[/bold red]"
-        console.print(error_msg)
-        raise typer.Exit(code=1)
+        console.print(f"[bold yellow]경고: 출력 디렉터리 {output_dir}가 이미 존재합니다. 삭제 중...[/bold yellow]")
+        import shutil
+        shutil.rmtree(output_dir)
+        console.print(f"[bold green]기존 디렉터리 삭제 완료[/bold green]")
 
     console.print(f"[bold blue]► 출력 디렉터리 {output_dir} 생성 중...[/bold blue]")
     os.makedirs(parts_dir)
@@ -112,19 +112,27 @@ def pack(
     console.print(msg)
     split_cmd = [
         "split",
-        "-b",
-        chunk_size,
+        "-b", chunk_size,
         archive_path,
-        f"{parts_dir}/",
-        "--numeric-suffixes=0",
-        "--suffix-length=4",
-        "-a",
-        "4",
+        f"{parts_dir}/"
     ]
-
-    if not run_command(split_cmd):
-        console.print("[bold red]오류: 파일 분할 실패[/bold red]")
+    
+    try:
+        if not run_command(split_cmd):
+            console.print("[bold red]오류: 파일 분할 실패[/bold red]")
+            raise typer.Exit(code=1)
+            
+        import glob
+        parts = glob.glob(f"{parts_dir}/*")
+        if parts and not parts[0].endswith(".part"):
+            console.print("[bold blue]► 파일 이름 형식 조정 중...[/bold blue]")
+            for i, part in enumerate(sorted(parts)):
+                new_name = f"{parts_dir}/{i:04d}.part"
+                os.rename(part, new_name)
+    except Exception as e:
+        console.print(f"[bold red]오류: 파일 분할 중 예외 발생: {str(e)}[/bold red]")
         raise typer.Exit(code=1)
+
 
     os.remove(archive_path)
 
