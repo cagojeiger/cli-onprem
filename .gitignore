@@ -64,7 +64,7 @@ wheels/
 
 # uv
 .uv/
-uv.lock
+# uv.lock - Keep this file for dependency consistency
 
 # Misc
 .DS_Store
