@@ -49,6 +49,8 @@ set -eu
 PURGE=0
 [ "${1:-}" = "--purge" ] && PURGE=1
 
+PACK_DIR="$(basename "$(pwd)")"
+
 printf "▶ 조각 무결성 검증...\\n"
 sha256sum -c manifest.sha256         # 실패 시 즉시 종료
 
@@ -58,17 +60,16 @@ cat parts/* > archive.tar.gz
 printf "▶ 압축 해제...\\n"
 cd ..
 # 원본 파일·디렉터리 복원
-PACK_DIR="$(basename "$(pwd)")"
-tar --no-same-owner -xzvf "$PACK_DIR"/archive.tar.gz
-cd "$(basename "$(pwd)")"
+tar --no-same-owner -xzvf "$PACK_DIR/archive.tar.gz"
 
 printf "▶ 중간 파일 정리...\\n"
+cd "$PACK_DIR"
 rm -f archive.tar.gz                 # 병합본 제거
 
 if [ "$PURGE" -eq 1 ]; then
   printf "▶ .pack 폴더 삭제(--purge)...\\n"
   cd ..
-  rm -rf "$(basename "$(pwd)")"      # .pack 디렉터리 전체 삭제
+  rm -rf "$PACK_DIR"                 # .pack 디렉터리 전체 삭제
 fi
 
 printf "🎉 복원 완료\\n"
