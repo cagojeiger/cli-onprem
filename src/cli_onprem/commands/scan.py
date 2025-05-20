@@ -1,4 +1,4 @@
-"""Scan command for CLI-ONPREM."""
+"""CLI-ONPREM을 위한 스캔 명령어."""
 
 from pathlib import Path
 
@@ -6,21 +6,21 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-app = typer.Typer(help="Scan a directory and generate a report")
+app = typer.Typer(help="디렉토리를 스캔하고 보고서 생성")
 console = Console()
 
 
-PATH_ARG = typer.Argument(..., help="Directory path to scan")
+PATH_ARG = typer.Argument(..., help="스캔할 디렉토리 경로")
 
 
 @app.command()
 def directory(
     path: Path = PATH_ARG,
     verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose output"
+        False, "--verbose", "-v", help="상세 출력 활성화"
     ),
 ) -> None:
-    """Scan a directory and generate a report of its contents."""
+    """디렉토리를 스캔하고 내용에 대한 보고서를 생성합니다."""
     if not path.exists():
         console.print(f"[bold red]Error: Path {path} does not exist[/bold red]")
         raise typer.Exit(code=1)
