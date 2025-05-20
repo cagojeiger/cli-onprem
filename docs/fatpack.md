@@ -59,13 +59,13 @@ cli-onprem fatpack pack 데이터_폴더 -c 500M
 cli-onprem fatpack restore 대용량_영상.mkv.pack
 # 또는
 cd 대용량_영상.mkv.pack && ./restore.sh
-# 출력: 대용량_영상.mkv 복원됨, .pack 디렉터리는 남아있음
+# 출력: 대용량_영상.mkv가 상위 디렉터리에 복원됨, .pack 디렉터리는 남아있음
 
 # 복원 후 완전 정리
 cli-onprem fatpack restore 대용량_영상.mkv.pack --purge
 # 또는
 cd 대용량_영상.mkv.pack && ./restore.sh --purge
-# 출력: 대용량_영상.mkv 복원됨, .pack 디렉터리는 삭제됨
+# 출력: 대용량_영상.mkv가 상위 디렉터리에 복원됨, .pack 디렉터리는 삭제됨
 ```
 
 ## 무결성 검증
