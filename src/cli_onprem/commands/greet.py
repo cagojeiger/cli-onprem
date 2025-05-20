@@ -18,3 +18,14 @@ def hello(
         console.print(f"[bold green]Hello, {name}![/bold green]")
     else:
         console.print("[bold green]Hello, world![/bold green]")
+
+
+@app.command()
+def goodbye(
+    name: Optional[str] = typer.Argument(None, help="작별 인사할 사람의 이름"),
+) -> None:
+    """친근한 작별 메시지로 사용자에게 인사합니다."""
+    if name:
+        console.print(f"[bold blue]Goodbye, {name}! See you later![/bold blue]")
+    else:
+        console.print("[bold blue]Goodbye! See you later![/bold blue]")
