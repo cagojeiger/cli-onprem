@@ -308,9 +308,7 @@ def collect_images(rendered_yaml: str) -> list[str]:
 
 
 CHART_ARG = typer.Argument(..., help="Helm 차트 아카이브(.tgz) 또는 디렉토리 경로")
-VALUES_OPTION = typer.Option(
-    None, "--values", "-f", help="추가 values.yaml 파일 경로", default_factory=list
-)
+VALUES_OPTION = typer.Option([], "--values", "-f", help="추가 values.yaml 파일 경로")
 QUIET_OPTION = typer.Option(
     False, "--quiet", "-q", help="로그 메시지 출력 안함 (stderr)"
 )
