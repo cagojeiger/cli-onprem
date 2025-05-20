@@ -19,7 +19,7 @@ pipx install cli-onprem
 git clone https://github.com/cagojeiger/cli-onprem.git
 cd cli-onprem
 uv sync --locked --all-extras --dev
-pip install -e .
+pipx install -e . --force
 ```
 
 ## 사용법
