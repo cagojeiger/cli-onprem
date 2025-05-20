@@ -57,7 +57,9 @@ cat parts/* > archive.tar.gz
 
 printf "▶ 압축 해제...\\n"
 cd ..
-tar --no-same-owner -xzvf "$(basename "$(pwd)")"/archive.tar.gz  # 원본 파일·디렉터리 복원
+# 원본 파일·디렉터리 복원
+PACK_DIR="$(basename "$(pwd)")"
+tar --no-same-owner -xzvf "$PACK_DIR"/archive.tar.gz
 cd "$(basename "$(pwd)")"
 
 printf "▶ 중간 파일 정리...\\n"
