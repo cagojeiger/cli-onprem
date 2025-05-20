@@ -46,6 +46,8 @@ cli-onprem fatpack restore <경로.pack> [--purge]
 
 ## 예제
 
+### 기본 사용법
+
 ```bash
 # 기본 압축 (3GB 조각 크기)
 cli-onprem fatpack pack 대용량_영상.mkv
@@ -66,6 +68,49 @@ cli-onprem fatpack restore 대용량_영상.mkv.pack --purge
 # 또는
 cd 대용량_영상.mkv.pack && ./restore.sh --purge
 # 출력: 대용량_영상.mkv가 상위 디렉터리에 복원됨, .pack 디렉터리는 삭제됨
+```
+
+### 상세 예시
+
+#### 3GB 조각으로 분할
+
+```bash
+fatpack pack movie.iso -c 3G
+```
+
+분할 후 구조:
+
+```
+movie.iso.pack/
+├─ parts/
+│  ├─ 0000.part
+│  ├─ 0001.part
+│  ├─ 0002.part
+│  └─ 0003.part
+├─ manifest.sha256
+├─ restore.sh
+└─ size.txt
+```
+
+#### 복원 과정
+
+```bash
+cd movie.iso.pack
+./restore.sh
+```
+
+복원 완료 후 최종 구조:
+
+```
+movie.iso.pack/
+│
+├─ parts/
+│   └─ …
+├─ manifest.sha256
+├─ restore.sh
+└─ size.txt
+
+movie.iso          ← 상위 디렉터리에 원본이 생성되었음
 ```
 
 ## 무결성 검증
