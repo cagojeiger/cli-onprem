@@ -17,9 +17,9 @@ def test_pull_image_success() -> None:
         mock_run.return_value = subprocess.CompletedProcess(
             args=["docker", "pull", "test:image"], returncode=0, stdout=b"", stderr=b""
         )
-        
+
         success, error = pull_image("test:image", quiet=True)
-        
+
         assert success is True
         assert error == ""
         mock_run.assert_called_once()
@@ -30,18 +30,21 @@ def test_pull_image_retry_success() -> None:
     with mock.patch("subprocess.run") as mock_run:
         mock_run.side_effect = [
             subprocess.CalledProcessError(
-                returncode=1, cmd=["docker", "pull", "test:image"], 
-                stderr=b"timeout while connecting to docker hub"
+                returncode=1,
+                cmd=["docker", "pull", "test:image"],
+                stderr=b"timeout while connecting to docker hub",
             ),
             subprocess.CompletedProcess(
-                args=["docker", "pull", "test:image"], returncode=0, 
-                stdout=b"", stderr=b""
-            )
+                args=["docker", "pull", "test:image"],
+                returncode=0,
+                stdout=b"",
+                stderr=b"",
+            ),
         ]
-        
+
         with mock.patch("time.sleep") as mock_sleep:  # time.sleep 무시
             success, error = pull_image("test:image", quiet=True)
-        
+
         assert success is True
         assert error == ""
         assert mock_run.call_count == 2
@@ -53,17 +56,18 @@ def test_pull_image_retry_fail() -> None:
     with mock.patch("subprocess.run") as mock_run:
         mock_run.side_effect = [
             subprocess.CalledProcessError(
-                returncode=1, cmd=["docker", "pull", "test:image"], 
-                stderr=b"timeout while connecting to docker hub"
+                returncode=1,
+                cmd=["docker", "pull", "test:image"],
+                stderr=b"timeout while connecting to docker hub",
             )
         ] * 4  # max_retries(3) + 첫 시도(1) = 4
-        
+
         with mock.patch("time.sleep") as mock_sleep:  # time.sleep 무시
             success, error = pull_image("test:image", quiet=True)
-        
+
         assert success is False
         if isinstance(error, bytes):
-            error_str = error.decode('utf-8', errors='replace')
+            error_str = error.decode("utf-8", errors="replace")
         else:
             error_str = str(error)
         assert "timeout" in error_str.lower()
@@ -75,15 +79,19 @@ def test_docker_tar_save_with_pull_retry() -> None:
     """Test docker-tar save command with image pull retry."""
     with mock.patch("cli_onprem.commands.docker_tar.check_image_exists") as mock_check:
         mock_check.return_value = False  # 이미지가 로컬에 없다고 가정
-        
+
         with mock.patch("cli_onprem.commands.docker_tar.pull_image") as mock_pull:
             mock_pull.return_value = (True, "")  # 성공적으로 이미지 가져옴
-            
-            with mock.patch("cli_onprem.commands.docker_tar.run_docker_command") as mock_run:
+
+            with mock.patch(
+                "cli_onprem.commands.docker_tar.run_docker_command"
+            ) as mock_run:
                 mock_run.return_value = (True, "")  # 성공적으로 저장
-                
-                result = runner.invoke(app, ["docker-tar", "save", "test:image"], input="y\n")
-                
+
+                result = runner.invoke(
+                    app, ["docker-tar", "save", "test:image"], input="y\n"
+                )
+
                 assert result.exit_code == 0
                 mock_pull.assert_called_once_with("test:image", False)
                 assert mock_run.call_count >= 1
