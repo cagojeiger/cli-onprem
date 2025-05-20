@@ -4,7 +4,7 @@ import os
 import re
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any
 
 import typer
 from rich.console import Console
@@ -12,6 +12,27 @@ from rich.prompt import Confirm
 
 app = typer.Typer(help="Docker 이미지를 tar 파일로 저장")
 console = Console()
+
+REFERENCE_ARG = typer.Argument(..., help="컨테이너 이미지 레퍼런스")
+ARCH_OPTION = typer.Option(None, "--arch", help="추출 플랫폼 지정 (linux/arm64 등)")
+OUTPUT_OPTION = typer.Option(
+    None, "--output", "-o", help="저장 위치(디렉터리 또는 완전한 경로)"
+)
+STDOUT_OPTION = typer.Option(
+    False, "--stdout", help="tar 스트림을 표준 출력으로 내보냄"
+)
+FORCE_OPTION = typer.Option(
+    False, "--force", "-f", help="동일 이름 파일 덮어쓰기"
+)
+QUIET_OPTION = typer.Option(
+    False, "--quiet", "-q", help="에러만 출력"
+)
+DRY_RUN_OPTION = typer.Option(
+    False, "--dry-run", help="실제 저장하지 않고 파일명만 출력"
+)
+VERBOSE_OPTION = typer.Option(
+    False, "--verbose", "-v", help="DEBUG 로그 출력"
+)
 
 
 def parse_image_reference(reference: str) -> Tuple[str, str, str, str]:
@@ -52,7 +73,9 @@ def parse_image_reference(reference: str) -> Tuple[str, str, str, str]:
     return registry, namespace, image, tag
 
 
-def generate_filename(registry: str, namespace: str, image: str, tag: str, arch: str) -> str:
+def generate_filename(
+    registry: str, namespace: str, image: str, tag: str, arch: str
+) -> str:
     """이미지 정보를 기반으로 파일명을 생성합니다.
 
     형식: [reg__][ns__]image__tag__arch.tar
@@ -76,10 +99,35 @@ def generate_filename(registry: str, namespace: str, image: str, tag: str, arch:
     return "".join(parts)
 
 
-def run_docker_command(cmd: List[str], stdout=None) -> Tuple[bool, str]:
+def check_image_exists(reference: str) -> bool:
+    """이미지가 로컬에 존재하는지 확인합니다."""
+    cmd = ["docker", "inspect", "--type=image", reference]
+    try:
+        subprocess.run(
+            cmd,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
+def pull_image(reference: str, quiet: bool = False) -> Tuple[bool, str]:
+    """이미지를 Docker Hub에서 가져옵니다."""
+    if not quiet:
+        console.print(f"[yellow]이미지 {reference} 다운로드 중...[/yellow]")
+    cmd = ["docker", "pull", reference]
+    return run_docker_command(cmd)
+
+
+def run_docker_command(
+    cmd: List[str], stdout: Optional[Any] = None
+) -> Tuple[bool, str]:
     """Docker 명령어를 실행합니다."""
     try:
-        process = subprocess.run(
+        subprocess.run(
             cmd, 
             check=True, 
             stdout=stdout, 
@@ -93,26 +141,14 @@ def run_docker_command(cmd: List[str], stdout=None) -> Tuple[bool, str]:
 
 @app.command()
 def save(
-    reference: str = typer.Argument(..., help="컨테이너 이미지 레퍼런스"),
-    arch: str = typer.Option(None, "--arch", help="추출 플랫폼 지정 (linux/arm64 등)"),
-    output: Optional[Path] = typer.Option(
-        None, "--output", "-o", help="저장 위치(디렉터리 또는 완전한 경로)"
-    ),
-    stdout: bool = typer.Option(
-        False, "--stdout", help="tar 스트림을 표준 출력으로 내보냄"
-    ),
-    force: bool = typer.Option(
-        False, "--force", "-f", help="동일 이름 파일 덮어쓰기"
-    ),
-    quiet: bool = typer.Option(
-        False, "--quiet", "-q", help="에러만 출력"
-    ),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="실제 저장하지 않고 파일명만 출력"
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="DEBUG 로그 출력"
-    ),
+    reference: str = REFERENCE_ARG,
+    arch: str = ARCH_OPTION,
+    output: Optional[Path] = OUTPUT_OPTION,
+    stdout: bool = STDOUT_OPTION,
+    force: bool = FORCE_OPTION,
+    quiet: bool = QUIET_OPTION,
+    dry_run: bool = DRY_RUN_OPTION,
+    verbose: bool = VERBOSE_OPTION,
 ) -> None:
     """Docker 이미지를 tar 파일로 저장합니다.
 
@@ -146,10 +182,20 @@ def save(
     
     if not stdout and full_path.exists() and not force:
         if not Confirm.ask(
-            f"[yellow]파일 {full_path}이(가) 이미 존재합니다. 덮어쓰시겠습니까?[/yellow]"
+            f"[yellow]파일 {full_path}이(가) 이미 존재합니다. "
+            f"덮어쓰시겠습니까?[/yellow]"
         ):
             console.print("[yellow]작업이 취소되었습니다.[/yellow]")
             return
+    
+    if not check_image_exists(reference):
+        if verbose:
+            console.print(f"[blue]이미지 {reference}가 로컬에 없습니다.[/blue]")
+        
+        success, error = pull_image(reference, quiet)
+        if not success:
+            console.print(f"[bold red]Error: 이미지 다운로드 실패: {error}[/bold red]")
+            raise typer.Exit(code=1)
     
     if not quiet:
         console.print(f"[green]이미지 {reference} 저장 중...[/green]")
@@ -166,4 +212,7 @@ def save(
         raise typer.Exit(code=1)
     
     if not stdout and not quiet:
-        console.print(f"[bold green]이미지가 성공적으로 저장되었습니다: {full_path}[/bold green]")
+        console.print(
+            f"[bold green]이미지가 성공적으로 저장되었습니다: "
+            f"{full_path}[/bold green]"
+        )
