@@ -93,7 +93,9 @@ def test_docker_tar_save_with_pull_retry() -> None:
                 )
 
                 assert result.exit_code == 0
-                mock_pull.assert_called_once_with("test:image", False, arch="linux/amd64")
+                mock_pull.assert_called_once_with(
+                    "test:image", False, arch="linux/amd64"
+                )
                 assert mock_run.call_count >= 1
 
 
