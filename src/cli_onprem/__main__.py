@@ -3,7 +3,7 @@
 import typer
 from rich.console import Console
 
-from cli_onprem.commands import docker_tar, fatpack, greet, helm, scan
+from cli_onprem.commands import docker_tar, fatpack, helm
 
 app = typer.Typer(
     name="cli-onprem",
@@ -11,8 +11,6 @@ app = typer.Typer(
     add_completion=True,
 )
 
-app.add_typer(greet.app, name="greet")
-app.add_typer(scan.app, name="scan")
 app.add_typer(docker_tar.app, name="docker-tar")
 app.add_typer(fatpack.app, name="fatpack")
 app.add_typer(helm.app, name="helm")
