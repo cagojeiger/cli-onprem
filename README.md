@@ -27,12 +27,6 @@ pipx install -e . --force
 ```bash
 # 도움말 보기
 cli-onprem --help
-
-# 인사 명령어
-cli-onprem greet hello [이름]
-
-# 디렉토리 스캔
-cli-onprem scan directory 경로 [--verbose]
 ```
 
 ## 개발
@@ -66,8 +60,6 @@ pytest
 ## 문서
 
 각 명령어에 대한 자세한 문서는 `docs/` 디렉토리에서 확인할 수 있습니다:
-- [인사 명령어](docs/greet_ko.md)
-- [스캔 명령어](docs/scan_ko.md)
 - [Helm 명령어](docs/helm.md)
 
 ## 라이선스
