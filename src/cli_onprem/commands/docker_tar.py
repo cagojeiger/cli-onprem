@@ -108,12 +108,12 @@ def check_image_exists(reference: str) -> bool:
 
 
 def pull_image(
-    reference: str, quiet: bool = False, max_retries: int = 3
+    reference: str, quiet: bool = False, max_retries: int = 3, arch: str = "linux/amd64"
 ) -> Tuple[bool, str]:
     """이미지를 Docker Hub에서 가져옵니다."""
     if not quiet:
         console.print(f"[yellow]이미지 {reference} 다운로드 중...[/yellow]")
-    cmd = ["docker", "pull", reference]
+    cmd = ["docker", "pull", "--platform", arch, reference]
 
     retry_count = 0
     last_error = ""
@@ -210,7 +210,7 @@ def save(
         if verbose:
             console.print(f"[blue]이미지 {reference}가 로컬에 없습니다.[/blue]")
 
-        success, error = pull_image(reference, quiet)
+        success, error = pull_image(reference, quiet, arch=f"linux/{architecture}")
         if not success:
             console.print(f"[bold red]Error: 이미지 다운로드 실패: {error}[/bold red]")
             raise typer.Exit(code=1)
