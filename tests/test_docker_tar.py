@@ -93,5 +93,28 @@ def test_docker_tar_save_with_pull_retry() -> None:
                 )
 
                 assert result.exit_code == 0
-                mock_pull.assert_called_once_with("test:image", False)
+                mock_pull.assert_called_once_with("test:image", False, arch="linux/amd64")
                 assert mock_run.call_count >= 1
+
+
+def test_pull_image_with_arch() -> None:
+    """Test image pull with architecture parameter."""
+    with mock.patch("subprocess.run") as mock_run:
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=["docker", "pull", "--platform", "linux/arm64", "test:image"],
+            returncode=0,
+            stdout=b"",
+            stderr=b"",
+        )
+
+        success, error = pull_image("test:image", quiet=True, arch="linux/arm64")
+
+        assert success is True
+        assert error == ""
+        mock_run.assert_called_once_with(
+            ["docker", "pull", "--platform", "linux/arm64", "test:image"],
+            check=True,
+            stdout=None,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
