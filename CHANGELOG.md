@@ -1,6 +1,37 @@
 # CHANGELOG
 
 
+## v0.2.0 (2025-05-23)
+
+### Bug Fixes
+
+- Gh secret
+  ([`2944279`](https://github.com/cagojeiger/cli-onprem/commit/2944279c9d6244dbee2affddd1ed92201d573b63))
+
+- Remove hardcoded repo_dir path in semantic-release config
+  ([`e89776b`](https://github.com/cagojeiger/cli-onprem/commit/e89776b1b27d5bf64ce981b0f4d7378907e27ace))
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com>
+
+### Chores
+
+- Add debug
+  ([`834549c`](https://github.com/cagojeiger/cli-onprem/commit/834549cc8a9a8b161c0d84b5d8e897d87f16fb03))
+
+### Documentation
+
+- **readme**: Clarify source installation
+  ([`4961431`](https://github.com/cagojeiger/cli-onprem/commit/4961431a58c26ee42781e844ff5c3259781694c1))
+
+### Features
+
+- Semantic-release 최초 자동 릴리즈 테스트
+  ([`a2e48e3`](https://github.com/cagojeiger/cli-onprem/commit/a2e48e3d3a195cea2e290b2816093e9d77681e2b))
+
+- **docker_tar**: Validate arch choices
+  ([`fdc7f3b`](https://github.com/cagojeiger/cli-onprem/commit/fdc7f3b593facd96be0dcf2805fadb5743bbd5d8))
+
+
 ## v0.1.0 (2025-05-22)
 
 ### Bug Fixes
