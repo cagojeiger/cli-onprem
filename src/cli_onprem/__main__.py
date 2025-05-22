@@ -1,6 +1,7 @@
 """CLI-ONPREM 애플리케이션의 메인 진입점."""
 
 import sys
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -34,7 +35,7 @@ def main(verbose: bool = False) -> None:
     pass
 
 
-def main_cli():
+def main_cli() -> Any:
     """Entry point for CLI."""
     return app(sys.argv[1:])
 
