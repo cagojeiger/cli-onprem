@@ -43,11 +43,19 @@ jobs:
       - name: Python Semantic Release Version
         id: version
         run: |
+          BEFORE_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if uv run semantic-release version; then
-            echo "released=true"  >> "$GITHUB_OUTPUT"   # 후속 스텝에서 사용할 출력값 노출
-            echo "tag=$(git describe --tags --abbrev=0)" >> "$GITHUB_OUTPUT"
+            AFTER_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [ "$BEFORE_TAG" != "$AFTER_TAG" ]; then
+              echo "released=true"  >> "$GITHUB_OUTPUT"
+              echo "tag=$AFTER_TAG" >> "$GITHUB_OUTPUT"
+            else
+              echo "released=false" >> "$GITHUB_OUTPUT"
+              echo "No new version released."
+            fi
           else
             echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "semantic-release version command failed."
           fi
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
