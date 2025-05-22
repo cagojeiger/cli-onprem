@@ -1,7 +1,7 @@
 # CHANGELOG
 
 
-## v0.2.0 (2025-05-23)
+## v0.2.0 (2025-05-22)
 
 ### Bug Fixes
 
@@ -18,12 +18,24 @@ Co-Authored-By: 강희용 <cagojeiger@naver.com>
 - Add debug
   ([`834549c`](https://github.com/cagojeiger/cli-onprem/commit/834549cc8a9a8b161c0d84b5d8e897d87f16fb03))
 
+### Continuous Integration
+
+- Add semantic-release version step before publish
+  ([`bb6fb1d`](https://github.com/cagojeiger/cli-onprem/commit/bb6fb1d445b1e1e1275ac24efc88d9ae3b4f0008))
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com>
+
 ### Documentation
 
 - **readme**: Clarify source installation
   ([`4961431`](https://github.com/cagojeiger/cli-onprem/commit/4961431a58c26ee42781e844ff5c3259781694c1))
 
 ### Features
+
+- Add version_toml configuration to update version in pyproject.toml
+  ([`03e827e`](https://github.com/cagojeiger/cli-onprem/commit/03e827e7cad2e0b8ed410c2f673a1eeb2a7f8d97))
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com>
 
 - Semantic-release 최초 자동 릴리즈 테스트
   ([`a2e48e3`](https://github.com/cagojeiger/cli-onprem/commit/a2e48e3d3a195cea2e290b2816093e9d77681e2b))
