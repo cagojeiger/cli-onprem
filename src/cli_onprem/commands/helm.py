@@ -8,11 +8,12 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from typing import Any, Set
+from typing import Any, List, Set
 
 import typer
 import yaml
 from rich.console import Console
+from typing_extensions import Annotated
 
 is_test = "pytest" in sys.modules
 context_settings = {
@@ -316,7 +317,31 @@ def collect_images(rendered_yaml: str) -> list[str]:
     return sorted(normalized_images)
 
 
-CHART_ARG = typer.Argument(..., help="Helm 차트 아카이브(.tgz) 또는 디렉토리 경로")
+def complete_chart_path(incomplete: str) -> list[str]:
+    """차트 경로 자동완성: .tgz 파일과 디렉토리 제안"""
+    from pathlib import Path
+
+    matches = []
+
+    for path in Path(".").glob(f"{incomplete}*"):
+        if path.is_dir():
+            matches.append(str(path))
+
+    for path in Path(".").glob(f"{incomplete}*.tgz"):
+        if path.is_file():
+            matches.append(str(path))
+
+    return matches
+
+
+CHART_ARG = Annotated[
+    pathlib.Path,
+    typer.Argument(
+        ...,
+        help="Helm 차트 아카이브(.tgz) 또는 디렉토리 경로",
+        autocompletion=complete_chart_path,
+    ),
+]
 VALUES_OPTION = typer.Option([], "--values", "-f", help="추가 values.yaml 파일 경로")
 QUIET_OPTION = typer.Option(
     False, "--quiet", "-q", help="로그 메시지 출력 안함 (stderr)"
@@ -329,7 +354,13 @@ RAW_OPTION = typer.Option(
 
 @app.command()
 def extract_images(
-    chart: pathlib.Path = CHART_ARG,
+    chart: Annotated[
+        pathlib.Path,
+        typer.Argument(
+            help="Helm 차트 아카이브(.tgz) 또는 디렉토리 경로",
+            autocompletion=complete_chart_path,
+        ),
+    ],
     values: list[pathlib.Path] = VALUES_OPTION,
     quiet: bool = QUIET_OPTION,
     json_output: bool = JSON_OPTION,
