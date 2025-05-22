@@ -60,3 +60,15 @@ cli-onprem docker-tar save redis:7.2 --dry-run
 다음과 같은 경우 명령어는 오류 코드(1)와 함께 종료됩니다:
 - Docker 명령어 실행 중 오류가 발생한 경우
 - 이미지 레퍼런스가 유효하지 않은 경우
+
+## 자동완성 기능
+
+CLI-ONPREM은 쉘 자동완성 기능을 지원합니다:
+
+1. 쉘 자동완성 활성화:
+```bash
+cli-onprem --install-completion [bash|zsh|fish]
+```
+
+2. 이미지 레퍼런스 자동완성:
+`save` 명령어 사용 시 Tab 키를 누르면 로컬 Docker에 있는 이미지 목록이 자동으로 제안됩니다.

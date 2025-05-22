@@ -27,6 +27,12 @@ pipx install -e . --force
 ```bash
 # 도움말 보기
 cli-onprem --help
+
+# 쉘 자동완성 활성화
+cli-onprem --install-completion
+
+# 특정 쉘에 대해 자동완성 활성화
+cli-onprem --install-completion bash  # 또는 zsh, fish
 ```
 
 ## 개발

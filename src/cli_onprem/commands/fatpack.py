@@ -9,6 +9,7 @@ from typing import List, Optional
 import typer
 from rich.console import Console
 from rich.markup import escape
+from typing_extensions import Annotated
 
 is_test = "pytest" in sys.modules
 context_settings = {
@@ -24,7 +25,27 @@ console = Console()
 
 DEFAULT_CHUNK_SIZE = "3G"
 
-PATH_ARG = typer.Argument(..., help="압축할 경로")
+
+def complete_path(incomplete: str) -> List[str]:
+    """경로 자동완성: 파일과 디렉토리 제안"""
+    from pathlib import Path
+
+    matches = []
+
+    for path in Path(".").glob(f"{incomplete}*"):
+        matches.append(str(path))
+
+    return matches
+
+
+PATH_ARG = Annotated[
+    Path,
+    typer.Argument(
+        ...,
+        help="압축할 경로",
+        autocompletion=complete_path,
+    ),
+]
 CHUNK_SIZE_OPTION = typer.Option(
     DEFAULT_CHUNK_SIZE, "--chunk-size", "-c", help="조각 크기 (예: 3G, 500M)"
 )
@@ -89,7 +110,13 @@ printf "🎉 복원 완료\\n"
 
 @app.command()
 def pack(
-    path: Path = PATH_ARG,
+    path: Annotated[
+        Path,
+        typer.Argument(
+            help="압축할 경로",
+            autocompletion=complete_path,
+        ),
+    ],
     chunk_size: str = CHUNK_SIZE_OPTION,
 ) -> None:
     """파일 또는 디렉터리를 압축하고 분할하여 저장합니다."""
@@ -172,12 +199,38 @@ def pack(
     console.print(f"[green]복원하려면: cd {escape(output_dir)} && ./restore.sh[/green]")
 
 
-PACK_DIR_ARG = typer.Argument(..., help="복원할 .pack 디렉터리 경로")
+def complete_pack_dir(incomplete: str) -> List[str]:
+    """팩 디렉토리 자동완성: .pack 디렉토리 제안"""
+    from pathlib import Path
+
+    matches = []
+
+    for path in Path(".").glob(f"{incomplete}*.pack"):
+        if path.is_dir():
+            matches.append(str(path))
+
+    return matches
+
+
+PACK_DIR_ARG = Annotated[
+    Path,
+    typer.Argument(
+        ...,
+        help="복원할 .pack 디렉토리 경로",
+        autocompletion=complete_pack_dir,
+    ),
+]
 
 
 @app.command()
 def restore(
-    pack_dir: Path = PACK_DIR_ARG,
+    pack_dir: Annotated[
+        Path,
+        typer.Argument(
+            help="복원할 .pack 디렉토리 경로",
+            autocompletion=complete_pack_dir,
+        ),
+    ],
     purge: bool = PURGE_OPTION,
 ) -> None:
     """압축된 파일을 복원합니다."""
