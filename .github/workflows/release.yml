@@ -33,7 +33,7 @@ jobs:
       - name: Python Semantic Release
         id: release
         run: |
-          uv run semantic-release publish
+          uv run semantic-release publish -vv
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
