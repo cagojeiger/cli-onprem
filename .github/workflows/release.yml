@@ -60,9 +60,9 @@ jobs:
       # 7-1. TestPyPI 업로드
       - name: Upload to TestPyPI
         if: steps.version.outputs.released == 'true'
-        run: uv run twine upload \
-               --repository-url https://test.pypi.org/legacy/ \
-               --skip-existing dist/*
+        run: uv run twine upload
+          --repository-url https://test.pypi.org/legacy/
+          --skip-existing dist/*
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
