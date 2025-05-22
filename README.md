@@ -70,6 +70,10 @@ pytest
 
 각 명령어에 대한 자세한 문서는 `docs/` 디렉토리에서 확인할 수 있습니다:
 - [Helm 명령어](docs/helm.md)
+- [Docker Tar 명령어](docs/docker_tar.md)
+- [FatPack 명령어](docs/fatpack.md)
+- [PyPI 등록 과정](docs/pypi.md)
+- [버전 관리 방식](docs/versioning.md)
 
 ## 라이선스
 
