@@ -90,3 +90,15 @@ cli-onprem helm extract-images wordpress-15.2.35.tgz -f prod-values.yaml | xargs
 4. 렌더링된 매니페스트에서 이미지 참조 추출
 5. 이미지 이름 표준화 및 중복 제거
 6. 정렬된 이미지 목록 출력
+
+## 자동완성 기능
+
+CLI-ONPREM은 쉘 자동완성 기능을 지원합니다:
+
+1. 쉘 자동완성 활성화:
+```bash
+cli-onprem --install-completion [bash|zsh|fish]
+```
+
+2. 차트 경로 자동완성:
+`extract-images` 명령어 사용 시 Tab 키를 누르면 현재 디렉토리의 `.tgz` 파일과 디렉토리 목록이 자동으로 제안됩니다.

@@ -9,6 +9,7 @@ from typing import Any, List, Optional, Tuple
 import typer
 from rich.console import Console
 from rich.prompt import Confirm
+from typing_extensions import Annotated
 
 is_test = "pytest" in sys.modules
 context_settings = {
@@ -22,7 +23,33 @@ app = typer.Typer(
 )
 console = Console()
 
-REFERENCE_ARG = typer.Argument(..., help="컨테이너 이미지 레퍼런스")
+
+def complete_docker_reference(incomplete: str) -> List[str]:
+    """도커 이미지 레퍼런스 자동완성: 로컬에 있는 이미지 제안"""
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            ["docker", "images", "--format", "{{.Repository}}:{{.Tag}}"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        all_images = result.stdout.splitlines()
+        return [img for img in all_images if img.startswith(incomplete)]
+    except Exception:
+        return []
+
+
+REFERENCE_ARG = Annotated[
+    str,
+    typer.Argument(
+        ...,
+        help="컨테이너 이미지 레퍼런스",
+        autocompletion=complete_docker_reference,
+    ),
+]
 ARCH_OPTION = typer.Option(None, "--arch", help="추출 플랫폼 지정 (linux/arm64 등)")
 OUTPUT_OPTION = typer.Option(
     None, "--output", "-o", help="저장 위치(디렉터리 또는 완전한 경로)"
@@ -169,7 +196,13 @@ def run_docker_command(
 
 @app.command()
 def save(
-    reference: str = REFERENCE_ARG,
+    reference: Annotated[
+        str,
+        typer.Argument(
+            help="컨테이너 이미지 레퍼런스",
+            autocompletion=complete_docker_reference,
+        ),
+    ],
     arch: str = ARCH_OPTION,
     output: Optional[Path] = OUTPUT_OPTION,
     stdout: bool = STDOUT_OPTION,
