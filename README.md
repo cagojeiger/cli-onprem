@@ -18,9 +18,10 @@ pipx install cli-onprem
 # 또는 소스에서 설치
 git clone https://github.com/cagojeiger/cli-onprem.git
 cd cli-onprem
-uv sync --locked --all-extras --dev
 pipx install -e . --force
 ```
+
+소스에서 설치할 때 일반 사용자는 위 명령어만 실행하면 됩니다.
 
 ## 사용법
 
@@ -43,7 +44,9 @@ cli-onprem --install-completion bash  # 또는 zsh, fish
 - 린팅 및 포맷팅을 위한 `ruff`, `black`, `mypy`
 - CI/CD를 위한 GitHub Actions
 
-### 개발 환경 설정
+## 개발 환경 설정
+
+개발에 필요한 의존성은 다음과 같이 설치합니다:
 
 ```bash
 # 저장소 복제
