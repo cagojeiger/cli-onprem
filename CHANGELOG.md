@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.2.2 (2025-05-22)
+
+### Bug Fixes
+
+- **ci**: Release.yml에서 TestPyPI 업로드 step의 run 구문 스타일 통일
+  ([`878b006`](https://github.com/cagojeiger/cli-onprem/commit/878b006852ad4f5c65ebfa77700136c34b4f0e02))
+
+
 ## v0.2.1 (2025-05-22)
 
 ### Bug Fixes
