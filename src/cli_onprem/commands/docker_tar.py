@@ -9,7 +9,19 @@ import typer
 from rich.console import Console
 from rich.prompt import Confirm
 
-app = typer.Typer(help="Docker 이미지를 tar 파일로 저장")
+import os
+import sys
+
+is_test = "pytest" in sys.modules
+context_settings = {
+    "ignore_unknown_options": is_test,
+    "allow_extra_args": is_test,
+}
+
+app = typer.Typer(
+    help="Docker 이미지를 tar 파일로 저장",
+    context_settings=context_settings,
+)
 console = Console()
 
 REFERENCE_ARG = typer.Argument(..., help="컨테이너 이미지 레퍼런스")
