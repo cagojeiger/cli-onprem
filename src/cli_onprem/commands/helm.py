@@ -14,9 +14,6 @@ import typer
 import yaml
 from rich.console import Console
 
-import os
-import sys
-
 is_test = "pytest" in sys.modules
 context_settings = {
     "ignore_unknown_options": is_test,

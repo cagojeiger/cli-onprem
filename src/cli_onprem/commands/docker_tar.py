@@ -1,6 +1,7 @@
 """CLI-ONPREM을 위한 Docker 이미지 tar 명령어."""
 
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
@@ -8,9 +9,6 @@ from typing import Any, List, Optional, Tuple
 import typer
 from rich.console import Console
 from rich.prompt import Confirm
-
-import os
-import sys
 
 is_test = "pytest" in sys.modules
 context_settings = {

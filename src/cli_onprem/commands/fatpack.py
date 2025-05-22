@@ -2,15 +2,13 @@
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import List, Optional
 
 import typer
 from rich.console import Console
 from rich.markup import escape
-
-import os
-import sys
 
 is_test = "pytest" in sys.modules
 context_settings = {
