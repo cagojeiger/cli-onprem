@@ -1,12 +1,11 @@
 """CLI-ONPREM 애플리케이션의 메인 진입점."""
 
+import sys
+
 import typer
 from rich.console import Console
 
 from cli_onprem.commands import docker_tar, fatpack, helm
-
-import os
-import sys
 
 is_test = "pytest" in sys.modules
 context_settings = {
