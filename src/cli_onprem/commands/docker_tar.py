@@ -13,8 +13,8 @@ from typing_extensions import Annotated
 
 is_test = "pytest" in sys.modules
 context_settings = {
-    "ignore_unknown_options": is_test,
-    "allow_extra_args": is_test,
+    "ignore_unknown_options": True,  # Always allow unknown options
+    "allow_extra_args": True,  # Always allow extra args
 }
 
 app = typer.Typer(
