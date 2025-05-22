@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v0.2.3 (2025-05-22)
+
+### Bug Fixes
+
+- **ci**: Version_toml
+  ([`14193d2`](https://github.com/cagojeiger/cli-onprem/commit/14193d28960f10cda56c03795b7ed7f6d5556c52))
+
+
 ## v0.2.2 (2025-05-22)
 
 ### Bug Fixes
