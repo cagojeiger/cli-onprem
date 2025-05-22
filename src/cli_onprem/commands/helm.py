@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -35,6 +36,19 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 ImageSet = Set[str]
+
+
+def check_helm_cli_installed() -> None:
+    """Helm CLI가 설치되어 있는지 확인합니다.
+
+    설치되어 있지 않은 경우 안내 메시지를 출력하고 프로그램을 종료합니다.
+    """
+    if shutil.which("helm") is None:
+        console.print("[bold red]오류: Helm CLI가 설치되어 있지 않습니다[/bold red]")
+        console.print(
+            "[yellow]Helm CLI 설치 방법: https://helm.sh/ko/docs/intro/install/[/yellow]"
+        )
+        raise typer.Exit(code=1)
 
 
 def extract_chart(chart_archive: pathlib.Path, dest_dir: pathlib.Path) -> pathlib.Path:
@@ -377,6 +391,7 @@ def extract_images(
     if quiet:
         logging.getLogger().setLevel(logging.ERROR)
 
+    check_helm_cli_installed()  # Helm CLI 의존성 확인
     logger.info(f"스크립트 시작: 차트={chart}, values 파일={values or '없음'}")
 
     with tempfile.TemporaryDirectory() as tmp:

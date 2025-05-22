@@ -219,40 +219,45 @@ def test_extract_images_command() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = pathlib.Path(tmpdir)
 
-        with mock.patch("cli_onprem.commands.helm.prepare_chart") as mock_prepare:
-            mock_prepare.return_value = tmp_path / "chart"
-
-            with mock.patch(
-                "cli_onprem.commands.helm.helm_dependency_update"
-            ) as mock_dep:
+        with mock.patch(
+            "cli_onprem.commands.helm.check_helm_cli_installed"
+        ) as mock_check:
+            with mock.patch("cli_onprem.commands.helm.prepare_chart") as mock_prepare:
                 with mock.patch(
-                    "cli_onprem.commands.helm.helm_template"
-                ) as mock_template:
-                    mock_template.return_value = """
-                    apiVersion: apps/v1
-                    kind: Deployment
-                    metadata:
-                      name: test
-                    spec:
-                      template:
-                        spec:
-                          containers:
-                          - name: test
-                            image: test:latest
-                    """
-
+                    "cli_onprem.commands.helm.helm_dependency_update"
+                ) as mock_dep:
                     with mock.patch(
-                        "cli_onprem.commands.helm.collect_images"
-                    ) as mock_collect:
-                        mock_collect.return_value = ["docker.io/library/test:latest"]
+                        "cli_onprem.commands.helm.helm_template"
+                    ) as mock_template:
+                        with mock.patch(
+                            "cli_onprem.commands.helm.collect_images"
+                        ) as mock_collect:
+                            mock_prepare.return_value = tmp_path / "chart"
+                            mock_template.return_value = """
+                            apiVersion: apps/v1
+                            kind: Deployment
+                            metadata:
+                              name: test
+                            spec:
+                              template:
+                                spec:
+                                  containers:
+                                  - name: test
+                                    image: test:latest
+                            """
+                            mock_collect.return_value = [
+                                "docker.io/library/test:latest"
+                            ]
 
-                        result = runner.invoke(
-                            app, ["helm", "extract-images", str(tmp_path / "chart.tgz")]
-                        )
+                            result = runner.invoke(
+                                app,
+                                ["helm", "extract-images", str(tmp_path / "chart.tgz")],
+                            )
 
-                        assert result.exit_code == 0
-                        assert "docker.io/library/test:latest" in result.stdout
-                        mock_prepare.assert_called_once()
-                        mock_dep.assert_called_once()
-                        mock_template.assert_called_once()
-                        mock_collect.assert_called_once()
+                            assert result.exit_code == 0
+                            assert "docker.io/library/test:latest" in result.stdout
+                            mock_check.assert_called_once()
+                            mock_prepare.assert_called_once()
+                            mock_dep.assert_called_once()
+                            mock_template.assert_called_once()
+                            mock_collect.assert_called_once()
