@@ -1,5 +1,6 @@
 """CLI-ONPREM을 위한 Docker 이미지 tar 명령어."""
 
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -22,9 +23,23 @@ app = typer.Typer(
 console = Console()
 
 
+def check_docker_cli_installed() -> None:
+    """Docker CLI가 설치되어 있는지 확인합니다.
+
+    설치되어 있지 않은 경우 안내 메시지를 출력하고 프로그램을 종료합니다.
+    """
+    if shutil.which("docker") is None:
+        console.print("[bold red]오류: Docker CLI가 설치되어 있지 않습니다[/bold red]")
+        console.print(
+            "[yellow]Docker CLI 설치 방법: https://docs.docker.com/engine/install/[/yellow]"
+        )
+        raise typer.Exit(code=1)
+
+
 def complete_docker_reference(incomplete: str) -> List[str]:
     """도커 이미지 레퍼런스 자동완성: 로컬에 있는 이미지 제안"""
-    import subprocess
+    if shutil.which("docker") is None:
+        return []  # Docker CLI가 없으면 자동완성 제안 없음
 
     try:
         result = subprocess.run(
@@ -239,6 +254,7 @@ def save(
 
     이미지 레퍼런스 구문: [<registry>/][<namespace>/]<image>[:<tag>]
     """
+    check_docker_cli_installed()  # Docker CLI 의존성 확인
     registry, namespace, image, tag = parse_image_reference(reference)
 
     architecture = "amd64"
