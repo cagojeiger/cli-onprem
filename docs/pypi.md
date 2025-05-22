@@ -36,55 +36,86 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   contents: write
   id-token: write
 
+concurrency:
+  group: release
+  cancel-in-progress: true           # 중복 실행 방지를 위한 설정
+
 jobs:
   release:
     runs-on: ubuntu-latest
-    concurrency: release
+
     steps:
+      # 1. 전체 히스토리 체크아웃
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0             # 태그와 커밋 분석을 위해 0으로 설정
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      # 2. Git 사용자 정보 설정
+      - name: Configure Git user
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      # 3. Python/uv 설치
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v1
+      - uses: astral-sh/setup-uv@v1
 
+      # 4. 의존성 설치
       - name: Install dependencies
-        run: |
-          uv sync --locked --all-extras --dev
+        run: uv sync --locked --all-extras --dev
 
-      - name: Python Semantic Release
-        id: release
+      # 5. semantic-release version 단계
+      - name: Python Semantic Release Version
+        id: version
         run: |
-          uv run semantic-release publish
+          BEFORE_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if uv run semantic-release version; then
+            AFTER_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [ "$BEFORE_TAG" != "$AFTER_TAG" ]; then
+              echo "released=true"  >> "$GITHUB_OUTPUT"
+              echo "tag=$AFTER_TAG" >> "$GITHUB_OUTPUT"
+            else
+              echo "released=false" >> "$GITHUB_OUTPUT"
+              echo "No new version released."
+            fi
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "semantic-release version command failed."
+          fi
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      - name: Build and publish to TestPyPI
-        if: steps.release.outputs.released == 'true'
-        run: |
-          uv run python -m build
-          uv run twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+      # 6. 배포용 패키지 빌드
+      - name: Build dist
+        if: steps.version.outputs.released == 'true'
+        run: uv run python -m build
+
+      # 7-1. TestPyPI 업로드
+      - name: Upload to TestPyPI
+        if: steps.version.outputs.released == 'true'
+        run: uv run twine upload \
+          --repository-url https://test.pypi.org/legacy/ \
+          --skip-existing dist/*
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
 
-      - name: Build and publish to PyPI
-        if: steps.release.outputs.released == 'true'
-        run: |
-          uv run python -m build
-          uv run twine upload dist/*
+      # 7-2. PyPI 업로드 (태그가 rc나 beta가 아닐 때만)
+      - name: Upload to PyPI
+        if: |
+          steps.version.outputs.released == 'true' &&
+          !contains(steps.version.outputs.tag, '-rc') &&
+          !contains(steps.version.outputs.tag, '-beta')
+        run: uv run twine upload --skip-existing dist/*
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
