@@ -43,7 +43,7 @@ dev = [
 ]
 
 [project.scripts]
-cli-onprem = "cli_onprem.__main__:app"
+cli-onprem = "cli_onprem.__main__:main_cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cli_onprem"]
