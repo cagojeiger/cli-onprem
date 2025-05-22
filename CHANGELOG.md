@@ -1,6 +1,16 @@
 # CHANGELOG
 
 
+## v0.2.1 (2025-05-22)
+
+### Bug Fixes
+
+- **ci**: Pypi/testpypi 업로드 시 TWINE_PASSWORD 시크릿 분리 및 조건부 업로드 개선 - TestPyPI와 PyPI 업로드 단계에서 각각 다른
+  TWINE_PASSWORD 시크릿을 명확히 분리하여 지정 - PyPI 업로드는 릴리즈 태그에 -rc, -beta가 포함되지 않은 경우에만 실행되도록 조건 추가 - 업로드 단계별
+  환경 변수 관리 명확화로 보안 및 유지보수성 향상 BREAKING CHANGE: 없음 (기존 배포 플로우와 호환됨)
+  ([`04bd2c5`](https://github.com/cagojeiger/cli-onprem/commit/04bd2c5fb64e79b02ed8e38d27b57d0a8ac80696))
+
+
 ## v0.2.0 (2025-05-22)
 
 ### Bug Fixes
