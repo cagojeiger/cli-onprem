@@ -30,7 +30,14 @@ jobs:
         run: |
           uv sync --locked --all-extras --dev
 
-      - name: Python Semantic Release
+      - name: Python Semantic Release Version
+        id: version
+        run: |
+          uv run semantic-release version
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          
+      - name: Python Semantic Release Publish
         id: release
         run: |
           uv run semantic-release publish
