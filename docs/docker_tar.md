@@ -11,7 +11,7 @@ cli-onprem docker-tar save <reference> [OPTIONS]
 ## 옵션
 
 - `<reference>`: 필수. 컨테이너 이미지 레퍼런스 (형식: `[<registry>/][<namespace>/]<image>[:<tag>]`).
-- `--arch <os/arch>`: 선택 사항. 추출 플랫폼 지정 (예: `linux/arm64`). 기본값: 자동 감지 (amd64로 설정됨).
+- `--arch <os/arch>`: 선택 사항. 추출 플랫폼 지정. 허용 값은 `linux/amd64` 또는 `linux/arm64`이며 기본값은 `linux/amd64`.
 - `--output`, `-o <dir|file>`: 선택 사항. 저장 위치(디렉터리 또는 완전한 경로). 기본값: 현재 작업 디렉터리.
 - `--stdout`: 선택 사항. tar 스트림을 표준 출력으로 내보냄 (파이프용).
 - `--force`, `-f`: 선택 사항. 동일 이름 파일 덮어쓰기. 기본값: False.

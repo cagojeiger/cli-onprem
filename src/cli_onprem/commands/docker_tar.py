@@ -48,7 +48,33 @@ REFERENCE_ARG = Annotated[
         autocompletion=complete_docker_reference,
     ),
 ]
-ARCH_OPTION = typer.Option(None, "--arch", help="추출 플랫폼 지정 (linux/arm64 등)")
+
+
+def _validate_arch(value: str) -> str:
+    """`--arch` 옵션 값을 검증한다.
+
+    Args:
+        value: 사용자가 입력한 플랫폼 문자열.
+
+    Returns:
+        검증된 플랫폼 문자열.
+
+    Raises:
+        typer.BadParameter: 허용되지 않은 값이 입력된 경우.
+    """
+    allowed = {"linux/amd64", "linux/arm64"}
+    if value not in allowed:
+        msg = "linux/amd64 또는 linux/arm64만 지원합니다."
+        raise typer.BadParameter(msg)
+    return value
+
+
+ARCH_OPTION = typer.Option(
+    "linux/amd64",
+    "--arch",
+    help="추출 플랫폼 지정 (linux/amd64 또는 linux/arm64)",
+    callback=_validate_arch,
+)
 OUTPUT_OPTION = typer.Option(
     None, "--output", "-o", help="저장 위치(디렉터리 또는 완전한 경로)"
 )

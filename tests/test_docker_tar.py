@@ -120,3 +120,14 @@ def test_pull_image_with_arch() -> None:
             stderr=subprocess.PIPE,
             text=True,
         )
+
+
+def test_save_invalid_arch() -> None:
+    """Invalid arch option should return an error."""
+    result = runner.invoke(
+        app,
+        ["docker-tar", "save", "nginx", "--arch", "linux/ppc64"],
+    )
+
+    assert result.exit_code != 0
+    assert "linux/amd64 또는 linux/arm64만 지원합니다." in result.stdout
