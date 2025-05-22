@@ -23,6 +23,8 @@ pipx install -e . --force
 
 소스에서 설치할 때 일반 사용자는 위 명령어만 실행하면 됩니다.
 
+이 도구는 **Python 3.8 이상**에서 동작합니다.
+
 ## 사용법
 
 ```bash
@@ -69,7 +71,11 @@ pytest
 ## 문서
 
 각 명령어에 대한 자세한 문서는 `docs/` 디렉토리에서 확인할 수 있습니다:
+- [Docker Tar 명령어](docs/docker_tar.md)
+- [FatPack 명령어](docs/fatpack.md)
 - [Helm 명령어](docs/helm.md)
+- [PyPI 등록 가이드](docs/pypi.md)
+- [버전 관리 방식](docs/versioning.md)
 
 ## 라이선스
 
