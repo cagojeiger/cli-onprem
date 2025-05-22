@@ -1,6 +1,16 @@
 # CHANGELOG
 
 
+## v0.3.0 (2025-05-22)
+
+### Features
+
+- Add CLI dependency checks for helm and docker commands
+  ([`05fd898`](https://github.com/cagojeiger/cli-onprem/commit/05fd8981e2428808db23527efaccf3074d2d8f03))
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com>
+
+
 ## v0.2.3 (2025-05-22)
 
 ### Bug Fixes
