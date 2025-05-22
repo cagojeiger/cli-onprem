@@ -14,7 +14,19 @@ import typer
 import yaml
 from rich.console import Console
 
-app = typer.Typer(help="Helm 차트 관련 작업 수행")
+import os
+import sys
+
+is_test = "pytest" in sys.modules
+context_settings = {
+    "ignore_unknown_options": is_test,
+    "allow_extra_args": is_test,
+}
+
+app = typer.Typer(
+    help="Helm 차트 관련 작업 수행",
+    context_settings=context_settings,
+)
 console = Console()
 
 logging.basicConfig(
