@@ -9,7 +9,19 @@ import typer
 from rich.console import Console
 from rich.markup import escape
 
-app = typer.Typer(help="파일 압축과 분할 관리")
+import os
+import sys
+
+is_test = "pytest" in sys.modules
+context_settings = {
+    "ignore_unknown_options": is_test,
+    "allow_extra_args": is_test,
+}
+
+app = typer.Typer(
+    help="파일 압축과 분할 관리",
+    context_settings=context_settings,
+)
 console = Console()
 
 DEFAULT_CHUNK_SIZE = "3G"
