@@ -35,7 +35,7 @@ jobs:
         run: |
           uv run semantic-release publish
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Build and publish to TestPyPI
         if: steps.release.outputs.released == 'true'
