@@ -11,7 +11,7 @@ from cli_onprem.commands import docker_tar, fatpack, helm
 is_test = "pytest" in sys.modules
 context_settings = {
     "ignore_unknown_options": True,  # Always allow unknown options
-    "allow_extra_args": True,        # Always allow extra args
+    "allow_extra_args": True,  # Always allow extra args
 }
 
 app = typer.Typer(
