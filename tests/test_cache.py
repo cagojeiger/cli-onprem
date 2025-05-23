@@ -1,4 +1,3 @@
-import json
 import pathlib
 import tempfile
 from unittest import mock
@@ -61,4 +60,3 @@ def test_get_cached_data_with_expired_cache_background_refresh() -> None:
                 cls.assert_called_once()
                 mock_thread.start.assert_called_once()
                 fetch_func.assert_not_called()
-
