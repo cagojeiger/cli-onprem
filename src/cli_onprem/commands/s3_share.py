@@ -1,9 +1,12 @@
 """CLI-ONPREM을 위한 S3 공유 관련 명령어."""
 
+import csv
+import datetime
 import hashlib
 import os
 import pathlib
-from typing import Dict, List, Optional
+import sys
+from typing import Dict, List, Optional, TextIO
 
 import typer
 import yaml
@@ -71,6 +74,10 @@ DELETE_OPTION = typer.Option(
     False, "--delete/--no-delete", help="원본에 없는 객체 삭제 여부 (기본: --no-delete)"
 )
 PARALLEL_OPTION = typer.Option(8, "--parallel", help="동시 업로드 쓰레드 수 (기본: 8)")
+EXPIRES_OPTION = typer.Option(7, "--expires", help="URL 만료 시간(일) (기본: 7일)")
+OUTPUT_OPTION = typer.Option(
+    None, "--output", help="CSV 저장 경로 (미지정 시 STDOUT으로 출력)"
+)
 
 
 def get_credential_path() -> pathlib.Path:
@@ -532,3 +539,98 @@ def sync(
         f"[bold green]동기화 완료: {upload_count} 업로드, {skip_count} 스킵, "
         f"{delete_count} 삭제되었음.[/bold green]"
     )
+
+
+@app.command()
+def presign(
+    bucket: Optional[str] = BUCKET_OPTION,
+    prefix: Optional[str] = PREFIX_OPTION,
+    expires: int = EXPIRES_OPTION,
+    output: Optional[str] = OUTPUT_OPTION,
+    profile: str = PROFILE_OPTION,
+) -> None:
+    """지정 프리픽스 하위 모든 객체의 프리사인드 URL을 일괄 생성합니다."""
+    creds = get_profile_credentials(profile, check_bucket=True)
+
+    s3_bucket = bucket or creds.get("bucket", "")
+    s3_prefix = prefix or creds.get("prefix", "")
+
+    if not s3_bucket:
+        console.print("[bold red]오류: S3 버킷이 지정되지 않았습니다.[/bold red]")
+        raise typer.Exit(code=1)
+
+    if s3_prefix and not s3_prefix.endswith("/"):
+        s3_prefix = f"{s3_prefix}/"
+
+    import boto3
+
+    console.print(
+        f"[bold blue]프리사인드 URL 생성: s3://{s3_bucket}/{s3_prefix}[/bold blue]"
+    )
+
+    s3_client = boto3.client(
+        "s3",
+        aws_access_key_id=creds["aws_access_key"],
+        aws_secret_access_key=creds["aws_secret_key"],
+        region_name=creds["region"],
+    )
+
+    s3_objects = []
+    paginator = s3_client.get_paginator("list_objects_v2")
+    try:
+        for page in paginator.paginate(Bucket=s3_bucket, Prefix=s3_prefix):
+            if "Contents" in page:
+                s3_objects.extend(page["Contents"])
+    except Exception as e:
+        console.print(f"[bold red]오류: S3 객체 목록 가져오기 실패: {e}[/bold red]")
+        raise typer.Exit(code=1) from e
+
+    if not s3_objects:
+        console.print(
+            f"[yellow]경고: '{s3_prefix}' 프리픽스 아래에 객체가 없습니다.[/yellow]"
+        )
+        raise typer.Exit(code=0)
+
+    csv_file: TextIO = sys.stdout
+    if output:
+        try:
+            csv_file = open(output, "w", newline="", encoding="utf-8")
+        except Exception as e:
+            console.print(f"[bold red]오류: CSV 파일 열기 실패: {e}[/bold red]")
+            raise typer.Exit(code=1) from e
+
+    try:
+        csv_writer = csv.writer(csv_file)
+        csv_writer.writerow(["filename", "link", "expire_at", "size"])
+
+        expires_seconds = expires * 24 * 60 * 60
+
+        expiration_time = datetime.datetime.now(
+            datetime.timezone.utc
+        ) + datetime.timedelta(days=expires)
+        for obj in tqdm(s3_objects, desc="URL 생성"):
+            try:
+                key = obj["Key"]
+                size = obj["Size"]
+                filename = key
+                if s3_prefix and key.startswith(s3_prefix):
+                    filename = key[len(s3_prefix) :]
+
+                url = s3_client.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": s3_bucket, "Key": key},
+                    ExpiresIn=expires_seconds,
+                )
+
+                expire_at = expiration_time.isoformat()
+
+                csv_writer.writerow([filename, url, expire_at, size])
+            except Exception as e:
+                console.print(f"[yellow]경고: '{key}' URL 생성 실패: {e}[/yellow]")
+                continue
+    finally:
+        if output and csv_file != sys.stdout:
+            csv_file.close()
+
+    if output:
+        console.print(f"[bold green]CSV 저장됨: {output}[/bold green]")
