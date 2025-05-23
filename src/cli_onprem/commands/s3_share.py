@@ -5,7 +5,6 @@ import os
 import pathlib
 from typing import Dict, List, Optional
 
-import boto3
 import typer
 import yaml
 from rich.console import Console
@@ -85,6 +84,8 @@ def complete_bucket(incomplete: str) -> List[str]:
 
     def fetch_buckets() -> List[str]:
         try:
+            import boto3
+
             credential_path = get_credential_path()
             if not credential_path.exists():
                 return []
@@ -123,6 +124,8 @@ def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
 
     def fetch_prefixes(bucket_name: str, current_path: str) -> List[str]:
         try:
+            import boto3
+
             if not bucket_name:
                 credential_path = get_credential_path()
                 if not credential_path.exists():
@@ -429,6 +432,8 @@ def sync(
 
     if s3_prefix and not s3_prefix.endswith("/"):
         s3_prefix = f"{s3_prefix}/"
+
+    import boto3
 
     console.print(
         f"[bold blue]S3 동기화: {src_path} → s3://{s3_bucket}/{s3_prefix}[/bold blue]"
