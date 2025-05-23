@@ -43,9 +43,7 @@ def complete_path(incomplete: str) -> List[str]:
 
         return matches
 
-    from cli_onprem.libs.cache import get_cached_data
-
-    matches = get_cached_data("fatpack_paths", fetch_paths, ttl=300)
+    matches = fetch_paths()
 
     return [m for m in matches if m.startswith(incomplete)]
 
@@ -225,9 +223,7 @@ def complete_pack_dir(incomplete: str) -> List[str]:
 
         return matches
 
-    from cli_onprem.libs.cache import get_cached_data
-
-    matches = get_cached_data("fatpack_pack_dirs", fetch_pack_dirs, ttl=300)
+    matches = fetch_pack_dirs()
 
     return [m for m in matches if m.startswith(incomplete)]
 
