@@ -26,20 +26,28 @@ DEFAULT_CHUNK_SIZE = "3G"
 
 def complete_path(incomplete: str) -> List[str]:
     """경로 자동완성: 압축 가능한 파일과 디렉토리 제안"""
-    from pathlib import Path
 
-    matches = []
+    def fetch_paths() -> List[str]:
+        from pathlib import Path
 
-    for path in Path(".").glob(f"{incomplete}*"):
-        if path.name.startswith("."):
-            continue
+        matches = []
 
-        if path.is_file() and path.stat().st_size > 0:
-            matches.append(str(path))
-        elif path.is_dir():
-            matches.append(str(path))
+        for path in Path(".").glob("*"):
+            if path.name.startswith("."):
+                continue
 
-    return matches
+            if path.is_file() and path.stat().st_size > 0:
+                matches.append(str(path))
+            elif path.is_dir():
+                matches.append(str(path))
+
+        return matches
+
+    from cli_onprem.libs.cache import get_cached_data
+
+    matches = get_cached_data("fatpack_paths", fetch_paths, ttl=300)
+
+    return [m for m in matches if m.startswith(incomplete)]
 
 
 PATH_ARG = Annotated[
@@ -205,15 +213,23 @@ def pack(
 
 def complete_pack_dir(incomplete: str) -> List[str]:
     """팩 디렉토리 자동완성: 유효한 .pack 디렉토리 제안"""
-    from pathlib import Path
 
-    matches = []
+    def fetch_pack_dirs() -> List[str]:
+        from pathlib import Path
 
-    for path in Path(".").glob(f"{incomplete}*.pack"):
-        if path.is_dir() and (path / "restore.sh").exists():
-            matches.append(str(path))
+        matches = []
 
-    return matches
+        for path in Path(".").glob("*.pack"):
+            if path.is_dir() and (path / "restore.sh").exists():
+                matches.append(str(path))
+
+        return matches
+
+    from cli_onprem.libs.cache import get_cached_data
+
+    matches = get_cached_data("fatpack_pack_dirs", fetch_pack_dirs, ttl=300)
+
+    return [m for m in matches if m.startswith(incomplete)]
 
 
 PACK_DIR_ARG = Annotated[

@@ -38,38 +38,44 @@ def check_docker_cli_installed() -> None:
 
 def complete_docker_reference(incomplete: str) -> List[str]:
     """도커 이미지 레퍼런스 자동완성: 로컬에 있는 이미지 제안"""
-    if shutil.which("docker") is None:
-        console.print(
-            "[yellow]Docker CLI가 없어 자동완성을 제공할 수 없습니다[/yellow]"
-        )
-        return []  # Docker CLI가 없으면 자동완성 제안 없음
 
-    try:
-        registry_filter = None
-        if "/" in incomplete:
-            parts = incomplete.split("/", 1)
-            if "." in parts[0] or ":" in parts[0]:  # 레지스트리로 판단
-                registry_filter = parts[0]
+    def fetch_docker_images() -> List[str]:
+        if shutil.which("docker") is None:
+            console.print(
+                "[yellow]Docker CLI가 없어 자동완성을 제공할 수 없습니다[/yellow]"
+            )
+            return []  # Docker CLI가 없으면 자동완성 제안 없음
 
-        result = subprocess.run(
-            ["docker", "images", "--format", "{{.Repository}}:{{.Tag}}"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        try:
+            result = subprocess.run(
+                ["docker", "images", "--format", "{{.Repository}}:{{.Tag}}"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return result.stdout.splitlines()
+        except Exception as e:
+            console.print(f"[yellow]이미지 자동완성 오류: {e}[/yellow]")
+            return []
 
-        all_images = result.stdout.splitlines()
-        filtered_images = [img for img in all_images if img.startswith(incomplete)]
+    from cli_onprem.libs.cache import get_cached_data
 
-        if registry_filter:
-            filtered_images = [
-                img for img in filtered_images if img.startswith(registry_filter)
-            ]
+    all_images = get_cached_data("docker_images", fetch_docker_images, ttl=300)
 
-        return filtered_images
-    except Exception as e:
-        console.print(f"[yellow]이미지 자동완성 오류: {e}[/yellow]")
-        return []
+    registry_filter = None
+    if "/" in incomplete:
+        parts = incomplete.split("/", 1)
+        if "." in parts[0] or ":" in parts[0]:  # 레지스트리로 판단
+            registry_filter = parts[0]
+
+    filtered_images = [img for img in all_images if img.startswith(incomplete)]
+
+    if registry_filter:
+        filtered_images = [
+            img for img in filtered_images if img.startswith(registry_filter)
+        ]
+
+    return filtered_images
 
 
 REFERENCE_ARG = Annotated[
