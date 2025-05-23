@@ -18,6 +18,7 @@ cli-onprem docker-tar save <reference> [OPTIONS]
 - `--quiet`, `-q`: 선택 사항. 에러만 출력. 기본값: False.
 - `--dry-run`: 선택 사항. 실제 저장하지 않고 파일명만 출력. 기본값: False.
 - `--verbose`, `-v`: 선택 사항. DEBUG 로그 출력. 기본값: False.
+- 이미지 아키텍처가 `--arch` 옵션과 다르면 오류를 출력하고 종료합니다.
 
 ## 파일명 형식
 
@@ -60,6 +61,7 @@ cli-onprem docker-tar save redis:7.2 --dry-run
 다음과 같은 경우 명령어는 오류 코드(1)와 함께 종료됩니다:
 - Docker 명령어 실행 중 오류가 발생한 경우
 - 이미지 레퍼런스가 유효하지 않은 경우
+- 실제 이미지의 아키텍처가 지정한 값과 다른 경우
 
 ## 자동완성 기능
 

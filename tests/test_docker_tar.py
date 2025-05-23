@@ -131,3 +131,22 @@ def test_save_invalid_arch() -> None:
 
     assert result.exit_code != 0
     assert "linux/amd64 또는 linux/arm64만 지원합니다." in result.stdout
+
+
+def test_save_arch_mismatch() -> None:
+    """Ensure error when image architecture and option mismatch."""
+    with mock.patch("cli_onprem.commands.docker_tar.check_image_exists") as mock_check:
+        mock_check.return_value = True
+
+        with mock.patch(
+            "cli_onprem.commands.docker_tar.get_image_architecture"
+        ) as mock_arch:
+            mock_arch.return_value = "amd64"
+
+            result = runner.invoke(
+                app,
+                ["docker-tar", "save", "test:image", "--arch", "linux/arm64"],
+            )
+
+            assert result.exit_code != 0
+            assert "아키텍처" in result.stdout

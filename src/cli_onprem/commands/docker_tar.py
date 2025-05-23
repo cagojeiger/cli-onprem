@@ -211,6 +211,28 @@ def check_image_exists(reference: str) -> bool:
         return False
 
 
+def get_image_architecture(reference: str) -> Optional[str]:
+    """도커 이미지의 아키텍처를 조회한다.
+
+    Args:
+        reference: 조회할 이미지 레퍼런스.
+
+    Returns:
+        이미지 아키텍처 문자열(예: ``"amd64"``). 실패 시 ``None``.
+    """
+    cmd = ["docker", "image", "inspect", "--format", "{{.Architecture}}", reference]
+    try:
+        result = subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        return None
+
+
 def pull_image(
     reference: str, quiet: bool = False, max_retries: int = 3, arch: str = "linux/amd64"
 ) -> Tuple[bool, str]:
@@ -325,6 +347,14 @@ def save(
         if not success:
             console.print(f"[bold red]Error: 이미지 다운로드 실패: {error}[/bold red]")
             raise typer.Exit(code=1)
+
+    actual_arch = get_image_architecture(reference)
+    if actual_arch and actual_arch != architecture:
+        console.print(
+            f"[bold red]이미지 아키텍처({actual_arch})가 요청한 "
+            f"아키텍처({architecture})와 일치하지 않습니다.[/bold red]"
+        )
+        raise typer.Exit(code=1)
 
     if not quiet:
         console.print(f"[green]이미지 {reference} 저장 중...[/green]")
