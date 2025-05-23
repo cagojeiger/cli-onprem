@@ -72,6 +72,7 @@ pytest
 - [Helm 명령어](docs/helm.md)
 - [Docker Tar 명령어](docs/docker_tar.md)
 - [FatPack 명령어](docs/fatpack.md)
+- [S3 공유 명령어](docs/s3-share.md)
 - [PyPI 등록 과정](docs/pypi.md)
 - [버전 관리 방식](docs/versioning.md)
 

@@ -6,7 +6,7 @@ from typing import Any
 import typer
 from rich.console import Console
 
-from cli_onprem.commands import docker_tar, fatpack, helm
+from cli_onprem.commands import docker_tar, fatpack, helm, s3_share
 
 context_settings = {
     "ignore_unknown_options": True,  # Always allow unknown options
@@ -24,6 +24,7 @@ app = typer.Typer(
 app.add_typer(docker_tar.app, name="docker-tar")
 app.add_typer(fatpack.app, name="fatpack")
 app.add_typer(helm.app, name="helm")
+app.add_typer(s3_share.app, name="s3-share")
 
 console = Console()
 
