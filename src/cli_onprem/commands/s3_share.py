@@ -5,6 +5,7 @@ import datetime
 import hashlib
 import os
 import pathlib
+import re
 import sys
 from typing import Dict, List, Optional, TextIO
 
@@ -74,9 +75,17 @@ DELETE_OPTION = typer.Option(
     False, "--delete/--no-delete", help="원본에 없는 객체 삭제 여부 (기본: --no-delete)"
 )
 PARALLEL_OPTION = typer.Option(8, "--parallel", help="동시 업로드 쓰레드 수 (기본: 8)")
+DATE_PREFIX_OPTION = typer.Option(
+    True,
+    "--date-prefix/--no-date-prefix",
+    help="날짜 기반 프리픽스 사용 여부 (기본: --date-prefix)",
+)
 EXPIRES_OPTION = typer.Option(7, "--expires", help="URL 만료 시간(일) (기본: 7일)")
 OUTPUT_OPTION = typer.Option(
     None, "--output", help="CSV 저장 경로 (미지정 시 STDOUT으로 출력)"
+)
+FOLDER_PATTERN_OPTION = typer.Option(
+    None, "--folder-pattern", help="선택할 폴더 패턴 (예: cli-onprem-2023-05-23-)"
 )
 
 
@@ -418,6 +427,7 @@ def sync(
     prefix: Optional[str] = PREFIX_OPTION,
     delete: bool = DELETE_OPTION,
     parallel: int = PARALLEL_OPTION,
+    date_prefix: bool = DATE_PREFIX_OPTION,
     profile: str = PROFILE_OPTION,
 ) -> None:
     """로컬 디렉터리와 S3 프리픽스 간 증분 동기화를 수행합니다."""
@@ -439,6 +449,12 @@ def sync(
 
     if s3_prefix and not s3_prefix.endswith("/"):
         s3_prefix = f"{s3_prefix}/"
+
+    if date_prefix:
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        date_prefix_str = f"cli-onprem-{today}-"
+        s3_prefix = f"{s3_prefix}{date_prefix_str}"
+        console.print(f"[blue]날짜 기반 프리픽스 적용: {date_prefix_str}[/blue]")
 
     import boto3
 
@@ -547,6 +563,7 @@ def presign(
     prefix: Optional[str] = PREFIX_OPTION,
     expires: int = EXPIRES_OPTION,
     output: Optional[str] = OUTPUT_OPTION,
+    folder_pattern: Optional[str] = FOLDER_PATTERN_OPTION,
     profile: str = PROFILE_OPTION,
 ) -> None:
     """지정 프리픽스 하위 모든 객체의 프리사인드 URL을 일괄 생성합니다."""
@@ -584,6 +601,30 @@ def presign(
     except Exception as e:
         console.print(f"[bold red]오류: S3 객체 목록 가져오기 실패: {e}[/bold red]")
         raise typer.Exit(code=1) from e
+
+    filtered_objects = []
+    if folder_pattern:
+        console.print(f"[blue]폴더 패턴 '{folder_pattern}' 필터링 중...[/blue]")
+        for obj in s3_objects:
+            key = obj["Key"]
+            relative_key = key[len(s3_prefix) :] if key.startswith(s3_prefix) else key
+            if relative_key.startswith(folder_pattern) or (
+                s3_prefix and s3_prefix.endswith(folder_pattern)
+            ):
+                filtered_objects.append(obj)
+    else:
+        pattern = r"cli-onprem-\d{4}-\d{2}-\d{2}-"
+        for obj in s3_objects:
+            key = obj["Key"]
+            relative_key = key[len(s3_prefix) :] if key.startswith(s3_prefix) else key
+            if re.search(pattern, relative_key) or (
+                s3_prefix and re.search(pattern, s3_prefix)
+            ):
+                filtered_objects.append(obj)
+        console.print("[blue]날짜 기반 프리픽스 패턴으로 필터링합니다.[/blue]")
+
+    s3_objects = filtered_objects
+    console.print(f"[blue]{len(s3_objects)}개 객체가 필터링되었습니다.[/blue]")
 
     if not s3_objects:
         console.print(
@@ -634,3 +675,148 @@ def presign(
 
     if output:
         console.print(f"[bold green]CSV 저장됨: {output}[/bold green]")
+
+
+DAYS_OPTION = typer.Option(7, "--days", help="삭제할 객체의 기준 일수 (기본: 7일)")
+DRY_RUN_OPTION = typer.Option(
+    False,
+    "--dry-run/--no-dry-run",
+    help="실제 삭제 없이 삭제 대상 객체만 확인 (기본: --no-dry-run)",
+)
+
+
+@app.command()
+def clean(
+    bucket: Optional[str] = BUCKET_OPTION,
+    prefix: Optional[str] = PREFIX_OPTION,
+    days: int = DAYS_OPTION,
+    dry_run: bool = DRY_RUN_OPTION,
+    profile: str = PROFILE_OPTION,
+) -> None:
+    """날짜 기반 프리픽스 패턴의 오래된 객체를 삭제합니다."""
+    creds = get_profile_credentials(profile, check_bucket=True)
+
+    s3_bucket = bucket or creds.get("bucket", "")
+    s3_prefix = prefix or creds.get("prefix", "")
+
+    if not s3_bucket:
+        console.print("[bold red]오류: S3 버킷이 지정되지 않았습니다.[/bold red]")
+        raise typer.Exit(code=1)
+
+    if s3_prefix and not s3_prefix.endswith("/"):
+        s3_prefix = f"{s3_prefix}/"
+
+    import boto3
+
+    console.print(
+        f"[bold blue]오래된 객체 정리: s3://{s3_bucket}/{s3_prefix}[/bold blue]"
+    )
+
+    s3_client = boto3.client(
+        "s3",
+        aws_access_key_id=creds["aws_access_key"],
+        aws_secret_access_key=creds["aws_secret_key"],
+        region_name=creds["region"],
+    )
+
+    s3_objects = []
+    paginator = s3_client.get_paginator("list_objects_v2")
+    try:
+        for page in paginator.paginate(Bucket=s3_bucket, Prefix=s3_prefix):
+            if "Contents" in page:
+                s3_objects.extend(page["Contents"])
+    except Exception as e:
+        console.print(f"[bold red]오류: S3 객체 목록 가져오기 실패: {e}[/bold red]")
+        raise typer.Exit(code=1) from e
+
+    if not s3_objects:
+        console.print(
+            f"[yellow]경고: '{s3_prefix}' 프리픽스 아래에 객체가 없습니다.[/yellow]"
+        )
+        raise typer.Exit(code=0)
+
+    pattern = r"cli-onprem-(\d{4}-\d{2}-\d{2})-"
+    today = datetime.datetime.now().date()
+    delete_candidates = []
+
+    for obj in s3_objects:
+        key = obj["Key"]
+        relative_key = key[len(s3_prefix) :] if key.startswith(s3_prefix) else key
+
+        match = re.search(pattern, relative_key)
+        if not match:
+            match = re.search(pattern, s3_prefix)
+            if not match:
+                continue
+
+        date_str = match.group(1)
+        try:
+            obj_date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+            days_old = (today - obj_date).days
+
+            if days_old >= days:
+                delete_candidates.append(
+                    {
+                        "Key": key,
+                        "Date": date_str,
+                        "DaysOld": days_old,
+                        "Size": obj["Size"],
+                    }
+                )
+        except ValueError:
+            console.print(f"[yellow]경고: '{key}' 날짜 파싱 실패[/yellow]")
+            continue
+
+    if not delete_candidates:
+        console.print(f"[green]삭제할 객체가 없습니다. (기준: {days}일 이상)[/green]")
+        raise typer.Exit(code=0)
+
+    total_size = sum(obj["Size"] for obj in delete_candidates)
+    console.print(
+        f"[blue]삭제 대상: {len(delete_candidates)}개 객체, "
+        f"총 {total_size / (1024 * 1024):.2f} MB[/blue]"
+    )
+
+    for i, obj in enumerate(delete_candidates[:5]):
+        console.print(
+            f"  {i + 1}. {obj['Key']} ({obj['Date']}, {obj['DaysOld']}일 경과, "
+            f"{obj['Size'] / 1024:.2f} KB)"
+        )
+
+    if len(delete_candidates) > 5:
+        console.print(f"  ... 외 {len(delete_candidates) - 5}개")
+
+    if dry_run:
+        console.print("[yellow]--dry-run 옵션: 실제 삭제 없이 확인만 수행됨.[/yellow]")
+        raise typer.Exit(code=0)
+
+    if not Confirm.ask("위 객체들을 삭제하시겠습니까?"):
+        console.print("[yellow]작업이 취소되었습니다.[/yellow]")
+        raise typer.Exit(code=0)
+
+    delete_objects = [{"Key": obj["Key"]} for obj in delete_candidates]
+
+    chunk_size = 1000
+    deleted_count = 0
+
+    for i in range(0, len(delete_objects), chunk_size):
+        chunk = delete_objects[i : i + chunk_size]
+        try:
+            response = s3_client.delete_objects(
+                Bucket=s3_bucket, Delete={"Objects": chunk, "Quiet": False}
+            )
+            if "Deleted" in response:
+                deleted_count += len(response["Deleted"])
+            if "Errors" in response and response["Errors"]:
+                for error in response["Errors"]:
+                    console.print(
+                        f"[red]삭제 실패: {error.get('Key', '알 수 없음')} - "
+                        f"{error.get('Code', '')}[/red]"
+                    )
+        except Exception as e:
+            console.print(f"[bold red]오류: 객체 삭제 실패: {e}[/bold red]")
+            continue
+
+    console.print(
+        f"[bold green]정리 완료: {deleted_count}개 객체가 삭제되었습니다.[/bold green]"
+    )
