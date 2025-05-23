@@ -2,6 +2,25 @@
 
 
 
+## v0.5.1 (2025-05-23)
+
+### Performance
+
+* perf: add cache module for autocompletion performance
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`b457ec1`](https://github.com/cagojeiger/cli-onprem/commit/b457ec1183123ffb129a3c7a3c6dda6c968d091b))
+
+### Unknown
+
+* Update uv.lock to match main branch version
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`c8170f5`](https://github.com/cagojeiger/cli-onprem/commit/c8170f54e35cf9f4604d7e843215a18e36286f55))
+
+* 자동완성 기능 개선: 라인 길이 수정
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`ff278f5`](https://github.com/cagojeiger/cli-onprem/commit/ff278f5b3d191375946ca5d0da95d32ccc7d00a3))
+
+
 ## v0.5.0 (2025-05-23)
 
 ### Documentation
