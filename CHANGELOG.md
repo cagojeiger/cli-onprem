@@ -2,6 +2,13 @@
 
 
 
+## v0.6.0 (2025-05-23)
+
+### Feature
+
+* feat(fatpack): remove cache usage in completions ([`8939397`](https://github.com/cagojeiger/cli-onprem/commit/89393979f7d40f3bb96bc26617e49619c5a2ab4b))
+
+
 ## v0.5.3 (2025-05-23)
 
 ### Chore
