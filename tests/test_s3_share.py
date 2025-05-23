@@ -31,15 +31,24 @@ def test_init_command_creates_credential_file(tmp_path: pathlib.Path) -> None:
 
     with mock.patch("pathlib.Path.home", return_value=home_dir):
         with mock.patch("os.chmod"):
-            result = runner.invoke(
+            result1 = runner.invoke(
                 app,
-                ["s3-share", "init", "--profile", "test_profile"],
-                input="test_key\ntest_secret\ntest_region\ntest_bucket\ntest_prefix\n",
+                ["s3-share", "init-credential", "--profile", "test_profile"],
+                input="test_key\ntest_secret\ntest_region\n",
             )
+            assert result1.exit_code == 0
 
-            assert result.exit_code == 0
+            result2 = runner.invoke(
+                app,
+                ["s3-share", "init-bucket", "--profile", "test_profile"],
+                input="test_bucket\ntest_prefix\n",
+            )
+            assert result2.exit_code == 0
             assert '자격증명 저장됨: 프로파일 "test_profile"' in strip_ansi(
-                result.stdout
+                result1.stdout
+            )
+            assert '버킷 정보 저장됨: 프로파일 "test_profile"' in strip_ansi(
+                result2.stdout
             )
 
             assert credential_path.exists()
@@ -80,7 +89,13 @@ def test_init_command_with_existing_profile_no_overwrite(
     with mock.patch("pathlib.Path.home", return_value=home_dir):
         result = runner.invoke(
             app,
-            ["s3-share", "init", "--profile", "test_profile", "--no-overwrite"],
+            [
+                "s3-share",
+                "init-credential",
+                "--profile",
+                "test_profile",
+                "--no-overwrite",
+            ],
             input="n\n",  # 덮어쓰기 거부
         )
 
@@ -118,15 +133,31 @@ def test_init_command_with_existing_profile_overwrite(tmp_path: pathlib.Path) ->
 
     with mock.patch("pathlib.Path.home", return_value=home_dir):
         with mock.patch("os.chmod"):
-            result = runner.invoke(
+            result1 = runner.invoke(
                 app,
-                ["s3-share", "init", "--profile", "test_profile", "--overwrite"],
-                input="new_key\nnew_secret\nnew_region\nnew_bucket\nnew_prefix\n",
+                [
+                    "s3-share",
+                    "init-credential",
+                    "--profile",
+                    "test_profile",
+                    "--overwrite",
+                ],
+                input="new_key\nnew_secret\nnew_region\n",
             )
 
-            assert result.exit_code == 0
+            result2 = runner.invoke(
+                app,
+                ["s3-share", "init-bucket", "--profile", "test_profile"],
+                input="new_bucket\nnew_prefix\n",
+            )
+
+            assert result1.exit_code == 0
+            assert result2.exit_code == 0
             assert '자격증명 저장됨: 프로파일 "test_profile"' in strip_ansi(
-                result.stdout
+                result1.stdout
+            )
+            assert '버킷 정보 저장됨: 프로파일 "test_profile"' in strip_ansi(
+                result2.stdout
             )
 
             with open(credential_path) as f:
