@@ -2,6 +2,23 @@
 
 
 
+## v0.5.3 (2025-05-23)
+
+### Chore
+
+* chore: apply uv ([`b92e7ea`](https://github.com/cagojeiger/cli-onprem/commit/b92e7ea7b08ce658091a22a6dbef954d73d4d739))
+
+* chore: apply lint ([`773819e`](https://github.com/cagojeiger/cli-onprem/commit/773819e06c318acd760450f8f1903f33b1d8d99a))
+
+### Fix
+
+* fix(docker-tar): remove caching from completion ([`4dbc6dd`](https://github.com/cagojeiger/cli-onprem/commit/4dbc6dd5bd17a5099a50bf669b8f4d6e002b7d6e))
+
+### Test
+
+* test: add cache module unit tests ([`59f82f8`](https://github.com/cagojeiger/cli-onprem/commit/59f82f813c1aee2563a9d628af640d52c4d8cd4e))
+
+
 ## v0.5.2 (2025-05-23)
 
 ### Fix
