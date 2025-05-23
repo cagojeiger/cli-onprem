@@ -1,12 +1,13 @@
 """CLI-ONPREM 애플리케이션의 메인 진입점."""
 
+import importlib
 import sys
-from typing import Any
+from typing import Any, cast
 
 import typer
 from rich.console import Console
 
-from cli_onprem.commands import docker_tar, fatpack, helm, s3_share
+# from cli_onprem.commands import docker_tar, fatpack, helm, s3_share
 
 context_settings = {
     "ignore_unknown_options": True,  # Always allow unknown options
@@ -21,12 +22,20 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
-app.add_typer(docker_tar.app, name="docker-tar")
-app.add_typer(fatpack.app, name="fatpack")
-app.add_typer(helm.app, name="helm")
-app.add_typer(s3_share.app, name="s3-share")
-
 console = Console()
+
+
+def get_command(import_path: str) -> typer.Typer:
+    """지정된 경로에서 명령어 모듈을 로드합니다."""
+    module_path, attr_name = import_path.split(":")
+    module = importlib.import_module(module_path)
+    return cast(typer.Typer, getattr(module, attr_name))
+
+
+app.add_typer(get_command("cli_onprem.commands.docker_tar:app"), name="docker-tar")
+app.add_typer(get_command("cli_onprem.commands.fatpack:app"), name="fatpack")
+app.add_typer(get_command("cli_onprem.commands.helm:app"), name="helm")
+app.add_typer(get_command("cli_onprem.commands.s3_share:app"), name="s3-share")
 
 
 @app.callback()
