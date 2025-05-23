@@ -35,6 +35,8 @@ def complete_bucket(incomplete: str) -> List[str]:
 
 캐시 파일은 다음과 같은 JSON 구조로 저장됩니다:
 
+모든 캐시 파일은 **UTF-8 인코딩**으로 저장됩니다.
+
 ```json
 {
   "timestamp": 1621234567,  // 마지막 갱신 시간 (Unix 타임스탬프)
