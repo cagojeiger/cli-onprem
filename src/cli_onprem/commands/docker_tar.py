@@ -39,9 +39,18 @@ def check_docker_cli_installed() -> None:
 def complete_docker_reference(incomplete: str) -> List[str]:
     """도커 이미지 레퍼런스 자동완성: 로컬에 있는 이미지 제안"""
     if shutil.which("docker") is None:
+        console.print(
+            "[yellow]Docker CLI가 없어 자동완성을 제공할 수 없습니다[/yellow]"
+        )
         return []  # Docker CLI가 없으면 자동완성 제안 없음
 
     try:
+        registry_filter = None
+        if "/" in incomplete:
+            parts = incomplete.split("/", 1)
+            if "." in parts[0] or ":" in parts[0]:  # 레지스트리로 판단
+                registry_filter = parts[0]
+
         result = subprocess.run(
             ["docker", "images", "--format", "{{.Repository}}:{{.Tag}}"],
             capture_output=True,
@@ -50,8 +59,16 @@ def complete_docker_reference(incomplete: str) -> List[str]:
         )
 
         all_images = result.stdout.splitlines()
-        return [img for img in all_images if img.startswith(incomplete)]
-    except Exception:
+        filtered_images = [img for img in all_images if img.startswith(incomplete)]
+
+        if registry_filter:
+            filtered_images = [
+                img for img in filtered_images if img.startswith(registry_filter)
+            ]
+
+        return filtered_images
+    except Exception as e:
+        console.print(f"[yellow]이미지 자동완성 오류: {e}[/yellow]")
         return []
 
 
@@ -84,11 +101,18 @@ def _validate_arch(value: str) -> str:
     return value
 
 
+def complete_arch(incomplete: str) -> List[str]:
+    """아키텍처 옵션 자동완성"""
+    options = ["linux/amd64", "linux/arm64"]
+    return [opt for opt in options if opt.startswith(incomplete)]
+
+
 ARCH_OPTION = typer.Option(
     "linux/amd64",
     "--arch",
     help="추출 플랫폼 지정 (linux/amd64 또는 linux/arm64)",
     callback=_validate_arch,
+    autocompletion=complete_arch,
 )
 OUTPUT_OPTION = typer.Option(
     None, "--output", "-o", help="저장 위치(디렉터리 또는 완전한 경로)"
