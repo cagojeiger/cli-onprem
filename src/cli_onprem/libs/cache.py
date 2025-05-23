@@ -34,7 +34,7 @@ def read_cache(cache_name: str) -> Optional[Dict[str, Any]]:
         return None
 
     try:
-        with open(cache_path) as f:
+        with open(cache_path, encoding="utf-8") as f:
             result: Dict[str, Any] = json.load(f)
             return result
     except (json.JSONDecodeError, OSError):
@@ -48,7 +48,7 @@ def write_cache(cache_name: str, data: Any, ttl: int = DEFAULT_TTL) -> None:
     cache_data = {"timestamp": int(time.time()), "data": data, "ttl": ttl}
 
     try:
-        with open(cache_path, "w") as f:
+        with open(cache_path, "w", encoding="utf-8") as f:
             json.dump(cache_data, f)
         os.chmod(cache_path, 0o600)
     except OSError:
