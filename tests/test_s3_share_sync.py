@@ -11,12 +11,10 @@ from cli_onprem.__main__ import app
 from cli_onprem.commands.s3_share import calculate_file_md5
 
 
-def _runner_factory() -> CliRunner:
+@pytest.fixture  # type: ignore
+def runner() -> CliRunner:
     """Typer CLI 테스트를 위한 runner 픽스처."""
     return CliRunner()
-
-
-runner = pytest.fixture(_runner_factory)
 
 
 def test_calculate_file_md5(tmp_path: pathlib.Path) -> None:

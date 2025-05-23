@@ -17,12 +17,10 @@ def strip_ansi(text: str) -> str:
     return ansi_escape.sub("", text)
 
 
+@pytest.fixture  # type: ignore
 def runner() -> CliRunner:
     """CLI 테스트 러너."""
     return CliRunner(mix_stderr=False)
-
-
-runner = pytest.fixture(runner)
 
 
 def test_init_command_creates_credential_file(
