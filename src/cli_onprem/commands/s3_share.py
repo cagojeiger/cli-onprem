@@ -3,7 +3,7 @@
 import hashlib
 import os
 import pathlib
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import boto3
 import typer
@@ -28,21 +28,28 @@ DEFAULT_PROFILE = "default_profile"
 
 def complete_profile(incomplete: str) -> List[str]:
     """프로파일 자동완성: 기존 프로파일 이름 제안"""
-    try:
-        credential_path = get_credential_path()
-        if not credential_path.exists():
-            return []
 
-        with open(credential_path) as f:
-            credentials = yaml.safe_load(f) or {}
+    def fetch_profiles() -> List[str]:
+        try:
+            credential_path = get_credential_path()
+            if not credential_path.exists():
+                return []
 
-        if not credentials:
-            return []
+            with open(credential_path) as f:
+                credentials = yaml.safe_load(f) or {}
 
-        profiles = list(credentials.keys())
-        return [p for p in profiles if p.startswith(incomplete)]
-    except Exception:
-        return []  # 오류 발생 시 자동완성 제안 없음
+            if not credentials:
+                return []
+
+            profiles = list(credentials.keys())
+            return profiles
+        except Exception:
+            return []  # 오류 발생 시 자동완성 제안 없음
+
+    from cli_onprem.libs.cache import get_cached_data
+
+    profiles = get_cached_data("profile_list", fetch_profiles, ttl=300)
+    return [p for p in profiles if p.startswith(incomplete)]
 
 
 PROFILE_OPTION = typer.Option(
@@ -73,61 +80,11 @@ def get_credential_path() -> pathlib.Path:
     return config_dir / "credential.yaml"
 
 
-_bucket_cache: Dict[str, Any] = {"timestamp": 0, "buckets": []}
-_prefix_cache: Dict[str, Any] = {"timestamp": 0, "bucket": "", "prefixes": {}}
-CACHE_TTL = 300  # 5분 캐시 유효 시간
-
-
 def complete_bucket(incomplete: str) -> List[str]:
     """S3 버킷 자동완성: 접근 가능한 버킷 제안"""
-    global _bucket_cache
-    import time
 
-    current_time = time.time()
-    if current_time - _bucket_cache["timestamp"] < CACHE_TTL:
-        return [b for b in _bucket_cache["buckets"] if b.startswith(incomplete)]
-
-    try:
-        credential_path = get_credential_path()
-        if not credential_path.exists():
-            return []
-
-        with open(credential_path) as f:
-            credentials = yaml.safe_load(f) or {}
-
-        if not credentials:
-            return []
-
-        profile = next(iter(credentials))
-        creds = credentials[profile]
-
-        s3_client = boto3.client(
-            "s3",
-            aws_access_key_id=creds["aws_access_key"],
-            aws_secret_access_key=creds["aws_secret_key"],
-            region_name=creds["region"],
-        )
-
-        response = s3_client.list_buckets()
-        buckets = [bucket["Name"] for bucket in response["Buckets"]]
-
-        _bucket_cache = {"timestamp": current_time, "buckets": buckets}
-
-        return [b for b in buckets if b.startswith(incomplete)]
-    except Exception as e:
-        console.print(f"[yellow]버킷 자동완성 오류: {e}[/yellow]")
-        return []  # 오류 발생 시 자동완성 제안 없음
-
-
-def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
-    """S3 프리픽스 자동완성: 버킷 내 프리픽스 제안"""
-    global _prefix_cache
-    import time
-
-    current_time = time.time()
-
-    try:
-        if not bucket:
+    def fetch_buckets() -> List[str]:
+        try:
             credential_path = get_credential_path()
             if not credential_path.exists():
                 return []
@@ -140,76 +97,114 @@ def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
 
             profile = next(iter(credentials))
             creds = credentials[profile]
-            bucket = creds.get("bucket", "")
-            if not bucket:
+
+            s3_client = boto3.client(
+                "s3",
+                aws_access_key_id=creds["aws_access_key"],
+                aws_secret_access_key=creds["aws_secret_key"],
+                region_name=creds["region"],
+            )
+
+            response = s3_client.list_buckets()
+            buckets = [bucket["Name"] for bucket in response["Buckets"]]
+            return buckets
+        except Exception as e:
+            console.print(f"[yellow]버킷 자동완성 오류: {e}[/yellow]")
+            return []
+
+    from cli_onprem.libs.cache import get_cached_data
+
+    buckets = get_cached_data("s3_buckets", fetch_buckets, ttl=600)
+    return [b for b in buckets if b.startswith(incomplete)]
+
+
+def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
+    """S3 프리픽스 자동완성: 버킷 내 프리픽스 제안"""
+
+    def fetch_prefixes(bucket_name: str, current_path: str) -> List[str]:
+        try:
+            if not bucket_name:
+                credential_path = get_credential_path()
+                if not credential_path.exists():
+                    return []
+
+                with open(credential_path) as f:
+                    credentials = yaml.safe_load(f) or {}
+
+                if not credentials:
+                    return []
+
+                profile = next(iter(credentials))
+                creds = credentials[profile]
+                bucket_name = creds.get("bucket", "")
+                if not bucket_name:
+                    return []
+
+            credential_path = get_credential_path()
+            if not credential_path.exists():
                 return []
 
-        current_path = ""
-        search_prefix = incomplete
+            with open(credential_path) as f:
+                credentials = yaml.safe_load(f) or {}
 
-        if "/" in incomplete:
-            last_slash_index = incomplete.rfind("/")
-            if last_slash_index >= 0:
-                current_path = incomplete[: last_slash_index + 1]
-                search_prefix = incomplete[last_slash_index + 1 :]
+            if not credentials:
+                return []
 
-        cache_key = f"{bucket}:{current_path}"
-        if (
-            current_time - _prefix_cache["timestamp"] < CACHE_TTL
-            and _prefix_cache["bucket"] == bucket
-            and cache_key in _prefix_cache["prefixes"]
-        ):
-            cached_prefixes = _prefix_cache["prefixes"][cache_key]
-            return [p for p in cached_prefixes if p.startswith(incomplete)]
+            profile = next(iter(credentials))
+            creds = credentials[profile]
 
-        credential_path = get_credential_path()
-        if not credential_path.exists():
-            return []
+            s3_client = boto3.client(
+                "s3",
+                aws_access_key_id=creds["aws_access_key"],
+                aws_secret_access_key=creds["aws_secret_key"],
+                region_name=creds["region"],
+            )
 
-        with open(credential_path) as f:
-            credentials = yaml.safe_load(f) or {}
+            response = s3_client.list_objects_v2(
+                Bucket=bucket_name, Delimiter="/", Prefix=current_path
+            )
 
-        if not credentials:
-            return []
+            prefixes = []
 
-        profile = next(iter(credentials))
-        creds = credentials[profile]
-
-        s3_client = boto3.client(
-            "s3",
-            aws_access_key_id=creds["aws_access_key"],
-            aws_secret_access_key=creds["aws_secret_key"],
-            region_name=creds["region"],
-        )
-
-        response = s3_client.list_objects_v2(
-            Bucket=bucket, Delimiter="/", Prefix=current_path
-        )
-
-        prefixes = []
-
-        if "CommonPrefixes" in response:
-            for prefix in response["CommonPrefixes"]:
-                folder_name = prefix["Prefix"][len(current_path) :]
-                if folder_name and folder_name.startswith(search_prefix):
+            if "CommonPrefixes" in response:
+                for prefix in response["CommonPrefixes"]:
                     prefixes.append(prefix["Prefix"])
 
-        if (
-            current_time - _prefix_cache["timestamp"] >= CACHE_TTL
-            or _prefix_cache["bucket"] != bucket
-        ):
-            _prefix_cache = {
-                "timestamp": current_time,
-                "bucket": bucket,
-                "prefixes": {},
-            }
+            return prefixes
+        except Exception as e:
+            console.print(f"[yellow]프리픽스 자동완성 오류: {e}[/yellow]")
+            return []
 
-        _prefix_cache["prefixes"][cache_key] = prefixes
+    current_path = ""
 
-        return prefixes
-    except Exception as e:
-        console.print(f"[yellow]프리픽스 자동완성 오류: {e}[/yellow]")
-        return []  # 오류 발생 시 자동완성 제안 없음
+    if "/" in incomplete:
+        last_slash_index = incomplete.rfind("/")
+        if last_slash_index >= 0:
+            current_path = incomplete[: last_slash_index + 1]
+
+    bucket_name = bucket
+    if not bucket_name:
+        try:
+            credential_path = get_credential_path()
+            if credential_path.exists():
+                with open(credential_path) as f:
+                    credentials = yaml.safe_load(f) or {}
+                if credentials:
+                    profile = next(iter(credentials))
+                    creds = credentials[profile]
+                    bucket_name = creds.get("bucket", "")
+        except Exception:
+            pass
+
+    cache_key = f"s3_prefixes_{bucket_name}_{current_path}"
+
+    from cli_onprem.libs.cache import get_cached_data
+
+    prefixes = get_cached_data(
+        cache_key, lambda: fetch_prefixes(bucket_name, current_path), ttl=600
+    )
+
+    return [p for p in prefixes if p.startswith(incomplete)]
 
 
 @app.command()

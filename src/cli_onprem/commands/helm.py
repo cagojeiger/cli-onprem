@@ -332,40 +332,48 @@ def collect_images(rendered_yaml: str) -> list[str]:
 
 def complete_chart_path(incomplete: str) -> list[str]:
     """차트 경로 자동완성: .tgz 파일과 유효한 차트 디렉토리 제안"""
-    import json
-    from pathlib import Path
 
-    matches = []
+    def fetch_chart_paths() -> list[str]:
+        import json
+        from pathlib import Path
 
-    for path in Path(".").glob(f"{incomplete}*"):
-        if path.is_dir():
-            if (path / "Chart.yaml").exists():
+        matches = []
+
+        for path in Path(".").glob("*"):
+            if path.is_dir():
+                if (path / "Chart.yaml").exists():
+                    matches.append(str(path))
+                else:
+                    for subdir in path.glob("*/Chart.yaml"):
+                        matches.append(str(subdir.parent))
+
+        for path in Path(".").glob("*.tgz"):
+            if path.is_file():
                 matches.append(str(path))
-            else:
-                for subdir in path.glob("*/Chart.yaml"):
-                    matches.append(str(subdir.parent))
 
-    for path in Path(".").glob(f"{incomplete}*.tgz"):
-        if path.is_file():
-            matches.append(str(path))
+        if shutil.which("helm") is not None:
+            try:
+                result = subprocess.run(
+                    ["helm", "list", "-o", "json"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                releases = json.loads(result.stdout)
+                for release in releases:
+                    chart_name = release.get("chart", "")
+                    if chart_name:
+                        matches.append(chart_name)
+            except Exception:
+                pass
 
-    if shutil.which("helm") is not None:
-        try:
-            result = subprocess.run(
-                ["helm", "list", "-o", "json"],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            releases = json.loads(result.stdout)
-            for release in releases:
-                chart_name = release.get("chart", "")
-                if chart_name and chart_name.startswith(incomplete):
-                    matches.append(chart_name)
-        except Exception:
-            pass
+        return matches
 
-    return matches
+    from cli_onprem.libs.cache import get_cached_data
+
+    matches = get_cached_data("helm_chart_paths", fetch_chart_paths, ttl=300)
+
+    return [m for m in matches if m.startswith(incomplete)]
 
 
 CHART_ARG = Annotated[
@@ -380,13 +388,21 @@ CHART_ARG = Annotated[
 
 def complete_values_file(incomplete: str) -> list[str]:
     """values 파일 자동완성: yaml 파일 제안"""
-    from pathlib import Path
 
-    matches = []
-    for path in Path(".").glob(f"{incomplete}*.yaml"):
-        if path.is_file():
-            matches.append(str(path))
-    return matches
+    def fetch_values_files() -> list[str]:
+        from pathlib import Path
+
+        matches = []
+        for path in Path(".").glob("*.yaml"):
+            if path.is_file():
+                matches.append(str(path))
+        return matches
+
+    from cli_onprem.libs.cache import get_cached_data
+
+    matches = get_cached_data("helm_values_files", fetch_values_files, ttl=300)
+
+    return [m for m in matches if m.startswith(incomplete)]
 
 
 VALUES_OPTION = typer.Option(
