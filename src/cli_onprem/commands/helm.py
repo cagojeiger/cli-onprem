@@ -369,9 +369,7 @@ def complete_chart_path(incomplete: str) -> list[str]:
 
         return matches
 
-    from cli_onprem.libs.cache import get_cached_data
-
-    matches = get_cached_data("helm_chart_paths", fetch_chart_paths, ttl=300)
+    matches = fetch_chart_paths()
 
     return [m for m in matches if m.startswith(incomplete)]
 
@@ -398,9 +396,7 @@ def complete_values_file(incomplete: str) -> list[str]:
                 matches.append(str(path))
         return matches
 
-    from cli_onprem.libs.cache import get_cached_data
-
-    matches = get_cached_data("helm_values_files", fetch_values_files, ttl=300)
+    matches = fetch_values_files()
 
     return [m for m in matches if m.startswith(incomplete)]
 
