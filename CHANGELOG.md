@@ -2,6 +2,31 @@
 
 
 
+## v0.5.0 (2025-05-23)
+
+### Documentation
+
+* docs: update s3-share.md with auto-completion and default region information
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`a536073`](https://github.com/cagojeiger/cli-onprem/commit/a536073aec61ba0c197b9839d265036f5bec3976))
+
+### Feature
+
+* feat: split s3-share init command into init-credential and init-bucket
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`2eea19f`](https://github.com/cagojeiger/cli-onprem/commit/2eea19f6a549dfa1de47396af1c0526313dd2a0a))
+
+* feat: add auto-completion for S3 bucket and prefix in s3-share init command
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`1827dfa`](https://github.com/cagojeiger/cli-onprem/commit/1827dfa26a719f157e8a7ec0dbcadc9fb199a58e))
+
+### Refactor
+
+* refactor: remove deprecated init command and make prefix autocomplete show folders only
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`ec5537c`](https://github.com/cagojeiger/cli-onprem/commit/ec5537c34a4e0085a4c176c8840fa13ca71710b1))
+
+
 ## v0.4.0 (2025-05-23)
 
 ### Build
