@@ -331,18 +331,39 @@ def collect_images(rendered_yaml: str) -> list[str]:
 
 
 def complete_chart_path(incomplete: str) -> list[str]:
-    """차트 경로 자동완성: .tgz 파일과 디렉토리 제안"""
+    """차트 경로 자동완성: .tgz 파일과 유효한 차트 디렉토리 제안"""
+    import json
     from pathlib import Path
 
     matches = []
 
     for path in Path(".").glob(f"{incomplete}*"):
         if path.is_dir():
-            matches.append(str(path))
+            if (path / "Chart.yaml").exists():
+                matches.append(str(path))
+            else:
+                for subdir in path.glob("*/Chart.yaml"):
+                    matches.append(str(subdir.parent))
 
     for path in Path(".").glob(f"{incomplete}*.tgz"):
         if path.is_file():
             matches.append(str(path))
+
+    if shutil.which("helm") is not None:
+        try:
+            result = subprocess.run(
+                ["helm", "list", "-o", "json"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            releases = json.loads(result.stdout)
+            for release in releases:
+                chart_name = release.get("chart", "")
+                if chart_name and chart_name.startswith(incomplete):
+                    matches.append(chart_name)
+        except Exception:
+            pass
 
     return matches
 
@@ -355,7 +376,26 @@ CHART_ARG = Annotated[
         autocompletion=complete_chart_path,
     ),
 ]
-VALUES_OPTION = typer.Option([], "--values", "-f", help="추가 values.yaml 파일 경로")
+
+
+def complete_values_file(incomplete: str) -> list[str]:
+    """values 파일 자동완성: yaml 파일 제안"""
+    from pathlib import Path
+
+    matches = []
+    for path in Path(".").glob(f"{incomplete}*.yaml"):
+        if path.is_file():
+            matches.append(str(path))
+    return matches
+
+
+VALUES_OPTION = typer.Option(
+    [],
+    "--values",
+    "-f",
+    help="추가 values.yaml 파일 경로",
+    autocompletion=complete_values_file,
+)
 QUIET_OPTION = typer.Option(
     False, "--quiet", "-q", help="로그 메시지 출력 안함 (stderr)"
 )

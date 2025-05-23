@@ -25,13 +25,19 @@ DEFAULT_CHUNK_SIZE = "3G"
 
 
 def complete_path(incomplete: str) -> List[str]:
-    """경로 자동완성: 파일과 디렉토리 제안"""
+    """경로 자동완성: 압축 가능한 파일과 디렉토리 제안"""
     from pathlib import Path
 
     matches = []
 
     for path in Path(".").glob(f"{incomplete}*"):
-        matches.append(str(path))
+        if path.name.startswith("."):
+            continue
+
+        if path.is_file() and path.stat().st_size > 0:
+            matches.append(str(path))
+        elif path.is_dir():
+            matches.append(str(path))
 
     return matches
 
@@ -198,13 +204,13 @@ def pack(
 
 
 def complete_pack_dir(incomplete: str) -> List[str]:
-    """팩 디렉토리 자동완성: .pack 디렉토리 제안"""
+    """팩 디렉토리 자동완성: 유효한 .pack 디렉토리 제안"""
     from pathlib import Path
 
     matches = []
 
     for path in Path(".").glob(f"{incomplete}*.pack"):
-        if path.is_dir():
+        if path.is_dir() and (path / "restore.sh").exists():
             matches.append(str(path))
 
     return matches

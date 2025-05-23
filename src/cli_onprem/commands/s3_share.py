@@ -3,7 +3,7 @@
 import hashlib
 import os
 import pathlib
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import boto3
 import typer
@@ -73,8 +73,20 @@ def get_credential_path() -> pathlib.Path:
     return config_dir / "credential.yaml"
 
 
+_bucket_cache: Dict[str, Any] = {"timestamp": 0, "buckets": []}
+_prefix_cache: Dict[str, Any] = {"timestamp": 0, "bucket": "", "prefixes": {}}
+CACHE_TTL = 300  # 5분 캐시 유효 시간
+
+
 def complete_bucket(incomplete: str) -> List[str]:
     """S3 버킷 자동완성: 접근 가능한 버킷 제안"""
+    global _bucket_cache
+    import time
+
+    current_time = time.time()
+    if current_time - _bucket_cache["timestamp"] < CACHE_TTL:
+        return [b for b in _bucket_cache["buckets"] if b.startswith(incomplete)]
+
     try:
         credential_path = get_credential_path()
         if not credential_path.exists():
@@ -98,13 +110,22 @@ def complete_bucket(incomplete: str) -> List[str]:
 
         response = s3_client.list_buckets()
         buckets = [bucket["Name"] for bucket in response["Buckets"]]
+
+        _bucket_cache = {"timestamp": current_time, "buckets": buckets}
+
         return [b for b in buckets if b.startswith(incomplete)]
-    except Exception:
+    except Exception as e:
+        console.print(f"[yellow]버킷 자동완성 오류: {e}[/yellow]")
         return []  # 오류 발생 시 자동완성 제안 없음
 
 
 def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
     """S3 프리픽스 자동완성: 버킷 내 프리픽스 제안"""
+    global _prefix_cache
+    import time
+
+    current_time = time.time()
+
     try:
         if not bucket:
             credential_path = get_credential_path()
@@ -122,6 +143,24 @@ def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
             bucket = creds.get("bucket", "")
             if not bucket:
                 return []
+
+        current_path = ""
+        search_prefix = incomplete
+
+        if "/" in incomplete:
+            last_slash_index = incomplete.rfind("/")
+            if last_slash_index >= 0:
+                current_path = incomplete[: last_slash_index + 1]
+                search_prefix = incomplete[last_slash_index + 1 :]
+
+        cache_key = f"{bucket}:{current_path}"
+        if (
+            current_time - _prefix_cache["timestamp"] < CACHE_TTL
+            and _prefix_cache["bucket"] == bucket
+            and cache_key in _prefix_cache["prefixes"]
+        ):
+            cached_prefixes = _prefix_cache["prefixes"][cache_key]
+            return [p for p in cached_prefixes if p.startswith(incomplete)]
 
         credential_path = get_credential_path()
         if not credential_path.exists():
@@ -143,15 +182,6 @@ def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
             region_name=creds["region"],
         )
 
-        current_path = ""
-        search_prefix = incomplete
-
-        if "/" in incomplete:
-            last_slash_index = incomplete.rfind("/")
-            if last_slash_index >= 0:
-                current_path = incomplete[: last_slash_index + 1]
-                search_prefix = incomplete[last_slash_index + 1 :]
-
         response = s3_client.list_objects_v2(
             Bucket=bucket, Delimiter="/", Prefix=current_path
         )
@@ -164,8 +194,21 @@ def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
                 if folder_name and folder_name.startswith(search_prefix):
                     prefixes.append(prefix["Prefix"])
 
+        if (
+            current_time - _prefix_cache["timestamp"] >= CACHE_TTL
+            or _prefix_cache["bucket"] != bucket
+        ):
+            _prefix_cache = {
+                "timestamp": current_time,
+                "bucket": bucket,
+                "prefixes": {},
+            }
+
+        _prefix_cache["prefixes"][cache_key] = prefixes
+
         return prefixes
-    except Exception:
+    except Exception as e:
+        console.print(f"[yellow]프리픽스 자동완성 오류: {e}[/yellow]")
         return []  # 오류 발생 시 자동완성 제안 없음
 
 
