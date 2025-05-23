@@ -31,6 +31,8 @@ cli-onprem s3-share init --profile production --overwrite
 |------|------|
 | `--profile TEXT` | 생성·수정할 프로파일 이름 (기본값: `default_profile`) |
 | `--overwrite/--no-overwrite` | 동일 프로파일 존재 시 덮어쓸지 여부 (기본값: `--no-overwrite`) |
+| `--bucket TEXT` | S3 버킷 (자동완성 지원) |
+| `--prefix TEXT` | S3 프리픽스 (자동완성 지원, 폴더 단위로 단계별 탐색) |
 
 ## 예제
 
@@ -40,11 +42,13 @@ cli-onprem s3-share init --profile production --overwrite
 cli-onprem s3-share init
 AWS Access Key? ···
 AWS Secret Key? ···
-Region? us-west-2
+Region? [us-west-2]: 
 Bucket? my-bucket
 Prefix? backups/
 자격증명 저장됨: 프로파일 "default_profile"
 ```
+
+> 참고: Region의 기본값은 `us-west-2`로 설정되어 있습니다.
 
 ### 특정 프로파일 생성
 
@@ -110,3 +114,16 @@ cli-onprem --install-completion [bash|zsh|fish]
 
 2. 명령어 자동완성:
 `s3-share` 명령어 사용 시 Tab 키를 누르면 서브커맨드와 옵션이 자동으로 제안됩니다.
+
+3. S3 버킷 및 프리픽스 자동완성:
+```bash
+# 버킷 자동완성
+cli-onprem s3-share init --bucket <Tab>
+
+# 프리픽스 자동완성 (폴더 단위로 단계별 탐색)
+cli-onprem s3-share init --prefix <Tab>
+cli-onprem s3-share init --prefix folder1/<Tab>
+cli-onprem s3-share init --prefix folder1/folder2/<Tab>
+```
+
+> 참고: 프리픽스 자동완성은 폴더 구조를 단계별로 탐색할 수 있도록 구현되어 있습니다. 사용자가 경로를 입력할 때마다 현재 경로의 하위 폴더와 파일만 표시됩니다.
