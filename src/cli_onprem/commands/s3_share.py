@@ -25,8 +25,31 @@ console = Console()
 
 DEFAULT_PROFILE = "default_profile"
 
+
+def complete_profile(incomplete: str) -> List[str]:
+    """프로파일 자동완성: 기존 프로파일 이름 제안"""
+    try:
+        credential_path = get_credential_path()
+        if not credential_path.exists():
+            return []
+
+        with open(credential_path) as f:
+            credentials = yaml.safe_load(f) or {}
+
+        if not credentials:
+            return []
+
+        profiles = list(credentials.keys())
+        return [p for p in profiles if p.startswith(incomplete)]
+    except Exception:
+        return []  # 오류 발생 시 자동완성 제안 없음
+
+
 PROFILE_OPTION = typer.Option(
-    DEFAULT_PROFILE, "--profile", help="생성·수정할 프로파일 이름"
+    DEFAULT_PROFILE,
+    "--profile",
+    help="생성·수정할 프로파일 이름",
+    autocompletion=complete_profile,
 )
 OVERWRITE_OPTION = typer.Option(
     False, "--overwrite/--no-overwrite", help="동일 프로파일 존재 시 덮어쓸지 여부"
@@ -140,14 +163,6 @@ def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
                 folder_name = prefix["Prefix"][len(current_path) :]
                 if folder_name and folder_name.startswith(search_prefix):
                     prefixes.append(prefix["Prefix"])
-
-        if "Contents" in response:
-            for obj in response["Contents"]:
-                key = obj["Key"]
-                if key != current_path and key.startswith(current_path):
-                    file_name = key[len(current_path) :]
-                    if "/" not in file_name and file_name.startswith(search_prefix):
-                        prefixes.append(key)
 
         return prefixes
     except Exception:
@@ -275,30 +290,6 @@ def init_bucket(
     except Exception as e:
         console.print(f"[bold red]오류: 자격증명 파일 저장 실패: {e}[/bold red]")
         raise typer.Exit(code=1) from e
-
-
-@app.command(deprecated=True)
-def init(
-    profile: str = PROFILE_OPTION,
-    overwrite: bool = OVERWRITE_OPTION,
-    bucket: str = typer.Option(
-        None, "--bucket", help="S3 버킷", autocompletion=complete_bucket
-    ),
-    prefix: str = typer.Option(
-        None,
-        "--prefix",
-        help="S3 프리픽스",
-        autocompletion=lambda incomplete: complete_prefix(incomplete),
-    ),
-) -> None:
-    """[사용 중단] 대신 init-credential과 init-bucket 명령을 사용하세요."""
-    console.print(
-        "[bold yellow]경고: 'init' 명령은 사용 중단되었습니다. "
-        "대신 'init-credential'과 'init-bucket' 명령을 사용하세요.[/bold yellow]"
-    )
-
-    init_credential(profile=profile, overwrite=overwrite)
-    init_bucket(profile=profile, bucket=bucket, prefix=prefix)
 
 
 def get_profile_credentials(profile: str, check_bucket: bool = False) -> Dict[str, str]:
