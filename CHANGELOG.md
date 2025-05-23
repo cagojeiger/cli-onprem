@@ -2,6 +2,17 @@
 
 
 
+## v0.6.1 (2025-05-23)
+
+### Chore
+
+* chore: apply version ([`7b4217c`](https://github.com/cagojeiger/cli-onprem/commit/7b4217cc20a74f3fd873e7801abbac5c9a68b415))
+
+### Fix
+
+* fix(helm): remove cache usage ([`db265bf`](https://github.com/cagojeiger/cli-onprem/commit/db265bf9d3b74239b8139a2a657b9f518b95368c))
+
+
 ## v0.6.0 (2025-05-23)
 
 ### Feature
