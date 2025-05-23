@@ -3,7 +3,7 @@
 import hashlib
 import os
 import pathlib
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import boto3
 import typer
@@ -50,10 +50,123 @@ def get_credential_path() -> pathlib.Path:
     return config_dir / "credential.yaml"
 
 
+def complete_bucket(incomplete: str) -> List[str]:
+    """S3 버킷 자동완성: 접근 가능한 버킷 제안"""
+    try:
+        credential_path = get_credential_path()
+        if not credential_path.exists():
+            return []
+
+        with open(credential_path) as f:
+            credentials = yaml.safe_load(f) or {}
+
+        if not credentials:
+            return []
+
+        profile = next(iter(credentials))
+        creds = credentials[profile]
+
+        s3_client = boto3.client(
+            "s3",
+            aws_access_key_id=creds["aws_access_key"],
+            aws_secret_access_key=creds["aws_secret_key"],
+            region_name=creds["region"],
+        )
+
+        response = s3_client.list_buckets()
+        buckets = [bucket["Name"] for bucket in response["Buckets"]]
+        return [b for b in buckets if b.startswith(incomplete)]
+    except Exception:
+        return []  # 오류 발생 시 자동완성 제안 없음
+
+
+def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
+    """S3 프리픽스 자동완성: 버킷 내 프리픽스 제안"""
+    try:
+        if not bucket:
+            credential_path = get_credential_path()
+            if not credential_path.exists():
+                return []
+
+            with open(credential_path) as f:
+                credentials = yaml.safe_load(f) or {}
+
+            if not credentials:
+                return []
+
+            profile = next(iter(credentials))
+            creds = credentials[profile]
+            bucket = creds.get("bucket", "")
+            if not bucket:
+                return []
+
+        credential_path = get_credential_path()
+        if not credential_path.exists():
+            return []
+
+        with open(credential_path) as f:
+            credentials = yaml.safe_load(f) or {}
+
+        if not credentials:
+            return []
+
+        profile = next(iter(credentials))
+        creds = credentials[profile]
+
+        s3_client = boto3.client(
+            "s3",
+            aws_access_key_id=creds["aws_access_key"],
+            aws_secret_access_key=creds["aws_secret_key"],
+            region_name=creds["region"],
+        )
+
+        current_path = ""
+        search_prefix = incomplete
+
+        if "/" in incomplete:
+            last_slash_index = incomplete.rfind("/")
+            if last_slash_index >= 0:
+                current_path = incomplete[: last_slash_index + 1]
+                search_prefix = incomplete[last_slash_index + 1 :]
+
+        response = s3_client.list_objects_v2(
+            Bucket=bucket, Delimiter="/", Prefix=current_path
+        )
+
+        prefixes = []
+
+        if "CommonPrefixes" in response:
+            for prefix in response["CommonPrefixes"]:
+                folder_name = prefix["Prefix"][len(current_path) :]
+                if folder_name and folder_name.startswith(search_prefix):
+                    prefixes.append(prefix["Prefix"])
+
+        if "Contents" in response:
+            for obj in response["Contents"]:
+                key = obj["Key"]
+                if key != current_path and key.startswith(current_path):
+                    file_name = key[len(current_path) :]
+                    if "/" not in file_name and file_name.startswith(search_prefix):
+                        prefixes.append(key)
+
+        return prefixes
+    except Exception:
+        return []  # 오류 발생 시 자동완성 제안 없음
+
+
 @app.command()
 def init(
     profile: str = PROFILE_OPTION,
     overwrite: bool = OVERWRITE_OPTION,
+    bucket: str = typer.Option(
+        None, "--bucket", help="S3 버킷", autocompletion=complete_bucket
+    ),
+    prefix: str = typer.Option(
+        None,
+        "--prefix",
+        help="S3 프리픽스",
+        autocompletion=lambda incomplete: complete_prefix(incomplete),
+    ),
 ) -> None:
     """~/.cli-onprem/credential.yaml 파일을 생성·갱신합니다."""
     credential_path = get_credential_path()
@@ -84,9 +197,13 @@ def init(
 
     aws_access_key = Prompt.ask("AWS Access Key")
     aws_secret_key = Prompt.ask("AWS Secret Key")
-    region = Prompt.ask("Region")
-    bucket = Prompt.ask("Bucket")
-    prefix = Prompt.ask("Prefix")
+    region = Prompt.ask("Region", default="us-west-2")
+
+    if bucket is None:
+        bucket = Prompt.ask("Bucket")
+
+    if prefix is None:
+        prefix = Prompt.ask("Prefix")
 
     credentials[profile] = {
         "aws_access_key": aws_access_key,
