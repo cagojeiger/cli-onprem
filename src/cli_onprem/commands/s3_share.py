@@ -84,8 +84,8 @@ EXPIRES_OPTION = typer.Option(7, "--expires", help="URL 만료 시간(일) (기�
 OUTPUT_OPTION = typer.Option(
     None, "--output", help="CSV 저장 경로 (미지정 시 STDOUT으로 출력)"
 )
-FOLDER_PATTERN_OPTION = typer.Option(
-    None, "--folder-pattern", help="선택할 폴더 패턴 (예: cli-onprem-2023-05-23-)"
+SELECT_FOLDER_OPTION = typer.Option(
+    None, "--select-folder", help="선택할 폴더 이름 (미지정 시 폴더 목록에서 선택)"
 )
 
 
@@ -563,7 +563,7 @@ def presign(
     prefix: Optional[str] = PREFIX_OPTION,
     expires: int = EXPIRES_OPTION,
     output: Optional[str] = OUTPUT_OPTION,
-    folder_pattern: Optional[str] = FOLDER_PATTERN_OPTION,
+    select_folder: Optional[str] = SELECT_FOLDER_OPTION,
     profile: str = PROFILE_OPTION,
 ) -> None:
     """지정 프리픽스 하위 모든 객체의 프리사인드 URL을 일괄 생성합니다."""
@@ -602,26 +602,48 @@ def presign(
         console.print(f"[bold red]오류: S3 객체 목록 가져오기 실패: {e}[/bold red]")
         raise typer.Exit(code=1) from e
 
+    available_folders = set()
+    for obj in s3_objects:
+        key = obj["Key"]
+        relative_key = key[len(s3_prefix) :] if key.startswith(s3_prefix) else key
+
+        parts = relative_key.split("/")
+        if len(parts) > 1:
+            folder = parts[0]
+            if folder and folder.startswith("cli-onprem"):
+                available_folders.add(folder)
+
+    sorted_folders = sorted(list(available_folders))
+
+    selected_folder = select_folder
     filtered_objects = []
-    if folder_pattern:
-        console.print(f"[blue]폴더 패턴 '{folder_pattern}' 필터링 중...[/blue]")
+
+    if not selected_folder and sorted_folders:
+        console.print("[blue]사용 가능한 폴더 목록:[/blue]")
+        for i, folder in enumerate(sorted_folders):
+            console.print(f"  {i + 1}. {folder}")
+
+        choice = Prompt.ask(
+            "선택할 폴더 번호를 입력하세요",
+            choices=[str(i + 1) for i in range(len(sorted_folders))],
+            default="1",
+        )
+        selected_folder = sorted_folders[int(choice) - 1]
+
+    if selected_folder:
+        console.print(f"[blue]선택된 폴더: '{selected_folder}'[/blue]")
         for obj in s3_objects:
             key = obj["Key"]
             relative_key = key[len(s3_prefix) :] if key.startswith(s3_prefix) else key
-            if relative_key.startswith(folder_pattern) or (
-                s3_prefix and s3_prefix.endswith(folder_pattern)
-            ):
+            if relative_key.startswith(f"{selected_folder}/"):
                 filtered_objects.append(obj)
     else:
-        pattern = r"cli-onprem-\d{4}-\d{2}-\d{2}-"
+        console.print("[blue]기본 필터: 'cli-onprem'으로 시작하는 객체[/blue]")
         for obj in s3_objects:
             key = obj["Key"]
             relative_key = key[len(s3_prefix) :] if key.startswith(s3_prefix) else key
-            if re.search(pattern, relative_key) or (
-                s3_prefix and re.search(pattern, s3_prefix)
-            ):
+            if relative_key.startswith("cli-onprem"):
                 filtered_objects.append(obj)
-        console.print("[blue]날짜 기반 프리픽스 패턴으로 필터링합니다.[/blue]")
 
     s3_objects = filtered_objects
     console.print(f"[blue]{len(s3_objects)}개 객체가 필터링되었습니다.[/blue]")
