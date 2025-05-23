@@ -2,6 +2,23 @@
 
 
 
+## v0.5.2 (2025-05-23)
+
+### Fix
+
+* fix: ensure UTF-8 encoding for cache ([`f14ba09`](https://github.com/cagojeiger/cli-onprem/commit/f14ba09e7338ce6db70cfcede646f5a1dd3987fa))
+
+### Refactor
+
+* refactor: 버전 업데이트 및 CI 빌드 문제 해결
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`74928bb`](https://github.com/cagojeiger/cli-onprem/commit/74928bb29da2fae80e3ff2f168bf7ac68425e99b))
+
+* refactor: CLI 시작 속도 최적화를 위한 지연 로딩 구현
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`fce7477`](https://github.com/cagojeiger/cli-onprem/commit/fce747768614504037ee032d27e7e68482b6be2b))
+
+
 ## v0.5.1 (2025-05-23)
 
 ### Performance
