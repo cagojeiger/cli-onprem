@@ -1,13 +1,16 @@
 """CLI-ONPREM을 위한 S3 공유 관련 명령어."""
 
+import hashlib
 import os
 import pathlib
-from typing import Dict
+from typing import Dict, Optional
 
+import boto3
 import typer
 import yaml
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
+from tqdm import tqdm
 
 context_settings = {
     "ignore_unknown_options": True,  # Always allow unknown options
@@ -28,6 +31,17 @@ PROFILE_OPTION = typer.Option(
 OVERWRITE_OPTION = typer.Option(
     False, "--overwrite/--no-overwrite", help="동일 프로파일 존재 시 덮어쓸지 여부"
 )
+
+BUCKET_OPTION = typer.Option(
+    None, "--bucket", help="대상 S3 버킷 (미지정 시 프로파일의 bucket 사용)"
+)
+PREFIX_OPTION = typer.Option(
+    None, "--prefix", help="대상 프리픽스 (미지정 시 프로파일의 prefix 사용)"
+)
+DELETE_OPTION = typer.Option(
+    False, "--delete/--no-delete", help="원본에 없는 객체 삭제 여부 (기본: --no-delete)"
+)
+PARALLEL_OPTION = typer.Option(8, "--parallel", help="동시 업로드 쓰레드 수 (기본: 8)")
 
 
 def get_credential_path() -> pathlib.Path:
@@ -92,3 +106,180 @@ def init(
     except Exception as e:
         console.print(f"[bold red]오류: 자격증명 파일 저장 실패: {e}[/bold red]")
         raise typer.Exit(code=1) from e
+
+
+def get_profile_credentials(profile: str) -> Dict[str, str]:
+    """저장된 프로파일에서 자격증명을 로드합니다."""
+    credential_path = get_credential_path()
+
+    if not credential_path.exists():
+        console.print(
+            "[bold red]오류: 자격증명 파일이 없습니다. "
+            "먼저 's3-share init' 명령을 실행하세요.[/bold red]"
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        with open(credential_path) as f:
+            credentials = yaml.safe_load(f) or {}
+    except Exception as e:
+        console.print(f"[bold red]오류: 자격증명 파일 로드 실패: {e}[/bold red]")
+        raise typer.Exit(code=1) from e
+
+    if profile not in credentials:
+        console.print(
+            f"[bold red]오류: 프로파일 '{profile}'이(가) 존재하지 않습니다.[/bold red]"
+        )
+        raise typer.Exit(code=1)
+
+    result: Dict[str, str] = {}
+    for key, value in credentials[profile].items():
+        result[key] = str(value)
+
+    return result
+
+
+def calculate_file_md5(file_path: pathlib.Path) -> Optional[str]:
+    """파일의 MD5 해시를 계산합니다. 대용량 파일의 경우 None을 반환합니다."""
+    if file_path.stat().st_size >= 5 * 1024 * 1024 * 1024:
+        return None
+
+    try:
+        md5_hash = hashlib.md5()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                md5_hash.update(chunk)
+        return md5_hash.hexdigest()
+    except Exception:
+        return None
+
+
+SRC_PATH_ARGUMENT = typer.Argument(..., help="동기화할 로컬 폴더 경로")
+
+
+@app.command()
+def sync(
+    src_path: pathlib.Path = SRC_PATH_ARGUMENT,
+    bucket: Optional[str] = BUCKET_OPTION,
+    prefix: Optional[str] = PREFIX_OPTION,
+    delete: bool = DELETE_OPTION,
+    parallel: int = PARALLEL_OPTION,
+    profile: str = PROFILE_OPTION,
+) -> None:
+    """로컬 디렉터리와 S3 프리픽스 간 증분 동기화를 수행합니다."""
+    if not src_path.exists() or not src_path.is_dir():
+        console.print(
+            f"[bold red]오류: 소스 경로 '{src_path}'가 존재하지 않거나 "
+            f"디렉토리가 아닙니다.[/bold red]"
+        )
+        raise typer.Exit(code=1)
+
+    creds = get_profile_credentials(profile)
+
+    s3_bucket = bucket or creds.get("bucket", "")
+    s3_prefix = prefix or creds.get("prefix", "")
+
+    if not s3_bucket:
+        console.print("[bold red]오류: S3 버킷이 지정되지 않았습니다.[/bold red]")
+        raise typer.Exit(code=1)
+
+    if s3_prefix and not s3_prefix.endswith("/"):
+        s3_prefix = f"{s3_prefix}/"
+
+    console.print(
+        f"[bold blue]S3 동기화: {src_path} → s3://{s3_bucket}/{s3_prefix}[/bold blue]"
+    )
+
+    s3_client = boto3.client(
+        "s3",
+        aws_access_key_id=creds["aws_access_key"],
+        aws_secret_access_key=creds["aws_secret_key"],
+        region_name=creds["region"],
+    )
+
+    s3_objects = {}
+    paginator = s3_client.get_paginator("list_objects_v2")
+    try:
+        for page in paginator.paginate(Bucket=s3_bucket, Prefix=s3_prefix):
+            if "Contents" in page:
+                for obj in page["Contents"]:
+                    key = obj["Key"]
+                    s3_objects[key] = {
+                        "ETag": obj["ETag"].strip('"'),  # ETag는 따옴표로 둘러싸여 있음
+                        "Size": obj["Size"],
+                        "LastModified": obj["LastModified"],
+                    }
+    except Exception as e:
+        console.print(f"[bold red]오류: S3 객체 목록 가져오기 실패: {e}[/bold red]")
+        raise typer.Exit(code=1) from e
+
+    local_files = set()
+    upload_count = 0
+    skip_count = 0
+    delete_count = 0
+
+    for local_path in src_path.glob("**/*"):
+        if local_path.is_file():
+            rel_path = local_path.relative_to(src_path)
+            s3_key = f"{s3_prefix}{str(rel_path).replace(os.sep, '/')}"
+            local_files.add(s3_key)
+
+            if s3_key in s3_objects:
+                s3_obj = s3_objects[s3_key]
+                local_size = local_path.stat().st_size
+                local_mtime = local_path.stat().st_mtime
+
+                local_md5 = calculate_file_md5(local_path)
+
+                if local_md5 is not None and local_md5 == s3_obj["ETag"]:
+                    skip_count += 1
+                    continue
+                elif local_md5 is None:
+                    s3_mtime = s3_obj["LastModified"].timestamp()
+                    if local_size == s3_obj["Size"] and local_mtime <= s3_mtime:
+                        skip_count += 1
+                        continue
+
+            try:
+                with tqdm(
+                    total=local_path.stat().st_size,
+                    unit="B",
+                    unit_scale=True,
+                    desc=f"업로드: {rel_path}",
+                ) as pbar:
+                    s3_client.upload_file(
+                        str(local_path),
+                        s3_bucket,
+                        s3_key,
+                        Callback=lambda bytes_transferred: pbar.update(
+                            bytes_transferred
+                        ),
+                    )
+                upload_count += 1
+            except Exception as e:
+                console.print(
+                    f"[bold red]오류: '{rel_path}' 업로드 실패: {e}[/bold red]"
+                )
+
+    if delete:
+        objects_to_delete = [key for key in s3_objects if key not in local_files]
+        if objects_to_delete:
+            console.print(
+                f"[yellow]S3에서 {len(objects_to_delete)}개 객체 삭제 중...[/yellow]"
+            )
+
+            for i in range(0, len(objects_to_delete), 1000):
+                batch = objects_to_delete[i : i + 1000]
+                try:
+                    s3_client.delete_objects(
+                        Bucket=s3_bucket,
+                        Delete={"Objects": [{"Key": key} for key in batch]},
+                    )
+                    delete_count += len(batch)
+                except Exception as e:
+                    console.print(f"[bold red]오류: 객체 삭제 실패: {e}[/bold red]")
+
+    console.print(
+        f"[bold green]동기화 완료: {upload_count} 업로드, {skip_count} 스킵, "
+        f"{delete_count} 삭제되었음.[/bold green]"
+    )
