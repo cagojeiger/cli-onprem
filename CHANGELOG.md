@@ -2,6 +2,47 @@
 
 
 
+## v0.6.0 (2025-05-23)
+
+### Feature
+
+* feat(fatpack): remove cache usage in completions ([`8939397`](https://github.com/cagojeiger/cli-onprem/commit/89393979f7d40f3bb96bc26617e49619c5a2ab4b))
+
+
+## v0.5.3 (2025-05-23)
+
+### Chore
+
+* chore: apply uv ([`b92e7ea`](https://github.com/cagojeiger/cli-onprem/commit/b92e7ea7b08ce658091a22a6dbef954d73d4d739))
+
+* chore: apply lint ([`773819e`](https://github.com/cagojeiger/cli-onprem/commit/773819e06c318acd760450f8f1903f33b1d8d99a))
+
+### Fix
+
+* fix(docker-tar): remove caching from completion ([`4dbc6dd`](https://github.com/cagojeiger/cli-onprem/commit/4dbc6dd5bd17a5099a50bf669b8f4d6e002b7d6e))
+
+### Test
+
+* test: add cache module unit tests ([`59f82f8`](https://github.com/cagojeiger/cli-onprem/commit/59f82f813c1aee2563a9d628af640d52c4d8cd4e))
+
+
+## v0.5.2 (2025-05-23)
+
+### Fix
+
+* fix: ensure UTF-8 encoding for cache ([`f14ba09`](https://github.com/cagojeiger/cli-onprem/commit/f14ba09e7338ce6db70cfcede646f5a1dd3987fa))
+
+### Refactor
+
+* refactor: 버전 업데이트 및 CI 빌드 문제 해결
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`74928bb`](https://github.com/cagojeiger/cli-onprem/commit/74928bb29da2fae80e3ff2f168bf7ac68425e99b))
+
+* refactor: CLI 시작 속도 최적화를 위한 지연 로딩 구현
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`fce7477`](https://github.com/cagojeiger/cli-onprem/commit/fce747768614504037ee032d27e7e68482b6be2b))
+
+
 ## v0.5.1 (2025-05-23)
 
 ### Performance

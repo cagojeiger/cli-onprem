@@ -58,9 +58,7 @@ def complete_docker_reference(incomplete: str) -> List[str]:
             console.print(f"[yellow]이미지 자동완성 오류: {e}[/yellow]")
             return []
 
-    from cli_onprem.libs.cache import get_cached_data
-
-    all_images = get_cached_data("docker_images", fetch_docker_images, ttl=300)
+    all_images = fetch_docker_images()
 
     registry_filter = None
     if "/" in incomplete:
