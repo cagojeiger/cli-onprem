@@ -17,7 +17,7 @@ def strip_ansi(text: str) -> str:
     return ansi_escape.sub("", text)
 
 
-@pytest.fixture  # type: ignore
+@pytest.fixture  # type: ignore[misc]
 def runner() -> CliRunner:
     """CLI 테스트 러너."""
     return CliRunner(mix_stderr=False)
