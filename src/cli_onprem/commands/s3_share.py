@@ -155,20 +155,11 @@ def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
 
 
 @app.command()
-def init(
+def init_credential(
     profile: str = PROFILE_OPTION,
     overwrite: bool = OVERWRITE_OPTION,
-    bucket: str = typer.Option(
-        None, "--bucket", help="S3 버킷", autocompletion=complete_bucket
-    ),
-    prefix: str = typer.Option(
-        None,
-        "--prefix",
-        help="S3 프리픽스",
-        autocompletion=lambda incomplete: complete_prefix(incomplete),
-    ),
 ) -> None:
-    """~/.cli-onprem/credential.yaml 파일을 생성·갱신합니다."""
+    """AWS 자격증명 정보(Access Key, Secret Key, Region)를 설정합니다."""
     credential_path = get_credential_path()
     config_dir = credential_path.parent
 
@@ -193,17 +184,18 @@ def init(
             console.print("[yellow]작업이 취소되었습니다.[/yellow]")
             raise typer.Exit(code=0)
 
-    console.print(f"[bold blue]프로파일 '{profile}' 설정 중...[/bold blue]")
+    console.print(f"[bold blue]프로파일 '{profile}' 자격증명 설정 중...[/bold blue]")
 
     aws_access_key = Prompt.ask("AWS Access Key")
     aws_secret_key = Prompt.ask("AWS Secret Key")
     region = Prompt.ask("Region", default="us-west-2")
 
-    if bucket is None:
-        bucket = Prompt.ask("Bucket")
-
-    if prefix is None:
-        prefix = Prompt.ask("Prefix")
+    if profile in credentials:
+        bucket = credentials[profile].get("bucket", "")
+        prefix = credentials[profile].get("prefix", "")
+    else:
+        bucket = ""
+        prefix = ""
 
     credentials[profile] = {
         "aws_access_key": aws_access_key,
@@ -225,14 +217,104 @@ def init(
         raise typer.Exit(code=1) from e
 
 
-def get_profile_credentials(profile: str) -> Dict[str, str]:
-    """저장된 프로파일에서 자격증명을 로드합니다."""
+@app.command()
+def init_bucket(
+    profile: str = PROFILE_OPTION,
+    bucket: str = typer.Option(
+        None, "--bucket", help="S3 버킷", autocompletion=complete_bucket
+    ),
+    prefix: str = typer.Option(
+        "/",
+        "--prefix",
+        help="S3 프리픽스 (기본값: /)",
+        autocompletion=lambda ctx, incomplete: complete_prefix(
+            incomplete, ctx.params.get("bucket", "")
+        ),
+    ),
+) -> None:
+    """S3 버킷 및 프리픽스 정보를 설정합니다.
+
+    init-credential 명령 실행 후 사용 가능합니다.
+    """
+    creds = get_profile_credentials(profile, check_bucket=False)
+
+    if not creds.get("aws_access_key") or not creds.get("aws_secret_key"):
+        console.print(
+            f"[bold red]오류: 프로파일 '{profile}'에 AWS 자격증명이 없습니다. "
+            f"먼저 's3-share init-credential' 명령을 실행하세요.[/bold red]"
+        )
+        raise typer.Exit(code=1)
+
+    credential_path = get_credential_path()
+
+    try:
+        with open(credential_path) as f:
+            credentials = yaml.safe_load(f) or {}
+    except Exception as e:
+        console.print(f"[bold red]오류: 자격증명 파일 로드 실패: {e}[/bold red]")
+        raise typer.Exit(code=1) from e
+
+    console.print(f"[bold blue]프로파일 '{profile}' 버킷 설정 중...[/bold blue]")
+
+    if bucket is None:
+        bucket = Prompt.ask("Bucket")
+
+    if prefix == "/":
+        prefix = Prompt.ask("Prefix", default="/")
+
+    credentials[profile]["bucket"] = bucket
+    credentials[profile]["prefix"] = prefix
+
+    try:
+        with open(credential_path, "w") as f:
+            yaml.dump(credentials, f, default_flow_style=False)
+
+        console.print(
+            f'[bold green]버킷 정보 저장됨: 프로파일 "{profile}"[/bold green]'
+        )
+    except Exception as e:
+        console.print(f"[bold red]오류: 자격증명 파일 저장 실패: {e}[/bold red]")
+        raise typer.Exit(code=1) from e
+
+
+@app.command(deprecated=True)
+def init(
+    profile: str = PROFILE_OPTION,
+    overwrite: bool = OVERWRITE_OPTION,
+    bucket: str = typer.Option(
+        None, "--bucket", help="S3 버킷", autocompletion=complete_bucket
+    ),
+    prefix: str = typer.Option(
+        None,
+        "--prefix",
+        help="S3 프리픽스",
+        autocompletion=lambda incomplete: complete_prefix(incomplete),
+    ),
+) -> None:
+    """[사용 중단] 대신 init-credential과 init-bucket 명령을 사용하세요."""
+    console.print(
+        "[bold yellow]경고: 'init' 명령은 사용 중단되었습니다. "
+        "대신 'init-credential'과 'init-bucket' 명령을 사용하세요.[/bold yellow]"
+    )
+
+    init_credential(profile=profile, overwrite=overwrite)
+    init_bucket(profile=profile, bucket=bucket, prefix=prefix)
+
+
+def get_profile_credentials(profile: str, check_bucket: bool = False) -> Dict[str, str]:
+    """저장된 프로파일에서 자격증명을 로드합니다.
+
+    Args:
+        profile: 프로파일 이름
+        check_bucket: 버킷 설정 여부 확인
+            (True인 경우 버킷이 설정되지 않았으면 오류 발생)
+    """
     credential_path = get_credential_path()
 
     if not credential_path.exists():
         console.print(
             "[bold red]오류: 자격증명 파일이 없습니다. "
-            "먼저 's3-share init' 명령을 실행하세요.[/bold red]"
+            "먼저 's3-share init-credential' 명령을 실행하세요.[/bold red]"
         )
         raise typer.Exit(code=1)
 
@@ -246,6 +328,22 @@ def get_profile_credentials(profile: str) -> Dict[str, str]:
     if profile not in credentials:
         console.print(
             f"[bold red]오류: 프로파일 '{profile}'이(가) 존재하지 않습니다.[/bold red]"
+        )
+        raise typer.Exit(code=1)
+
+    if not credentials[profile].get("aws_access_key") or not credentials[profile].get(
+        "aws_secret_key"
+    ):
+        console.print(
+            f"[bold red]오류: 프로파일 '{profile}'에 AWS 자격증명이 없습니다. "
+            f"먼저 's3-share init-credential' 명령을 실행하세요.[/bold red]"
+        )
+        raise typer.Exit(code=1)
+
+    if check_bucket and not credentials[profile].get("bucket"):
+        console.print(
+            f"[bold red]오류: 프로파일 '{profile}'에 버킷이 설정되지 않았습니다. "
+            f"먼저 's3-share init-bucket' 명령을 실행하세요.[/bold red]"
         )
         raise typer.Exit(code=1)
 
@@ -291,7 +389,7 @@ def sync(
         )
         raise typer.Exit(code=1)
 
-    creds = get_profile_credentials(profile)
+    creds = get_profile_credentials(profile, check_bucket=True)
 
     s3_bucket = bucket or creds.get("bucket", "")
     s3_prefix = prefix or creds.get("prefix", "")
