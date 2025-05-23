@@ -3,18 +3,13 @@
 import pathlib
 from unittest import mock
 
-import pytest
 import yaml
 from typer.testing import CliRunner
 
 from cli_onprem.__main__ import app
 from cli_onprem.commands.s3_share import calculate_file_md5
 
-
-@pytest.fixture  # type: ignore
-def runner() -> CliRunner:
-    """Typer CLI 테스트를 위한 runner 픽스처."""
-    return CliRunner()
+runner = CliRunner()
 
 
 def test_calculate_file_md5(tmp_path: pathlib.Path) -> None:
@@ -26,7 +21,7 @@ def test_calculate_file_md5(tmp_path: pathlib.Path) -> None:
     assert md5 == "9473fdd0d880a43c21b7778d34872157"
 
 
-def test_sync_command_local_path_not_exist(runner: CliRunner) -> None:
+def test_sync_command_local_path_not_exist() -> None:
     """존재하지 않는 로컬 경로로 sync 명령 테스트."""
     with mock.patch("pathlib.Path.exists", return_value=False):
         result = runner.invoke(app, ["s3-share", "sync", "/not/exist/path"])
@@ -36,9 +31,7 @@ def test_sync_command_local_path_not_exist(runner: CliRunner) -> None:
         assert "디렉토리가 아닙니다." in result.stdout
 
 
-def test_sync_command_profile_not_exist(
-    runner: CliRunner, tmp_path: pathlib.Path
-) -> None:
+def test_sync_command_profile_not_exist(tmp_path: pathlib.Path) -> None:
     """존재하지 않는 프로파일로 sync 명령 테스트."""
     home_dir = tmp_path / "home"
     home_dir.mkdir()
@@ -62,7 +55,7 @@ def test_sync_command_profile_not_exist(
                 assert "않습니다." in result.stdout
 
 
-def test_sync_command_success(runner: CliRunner, tmp_path: pathlib.Path) -> None:
+def test_sync_command_success(tmp_path: pathlib.Path) -> None:
     """성공적인 sync 명령 테스트."""
     src_dir = tmp_path / "src"
     src_dir.mkdir()
