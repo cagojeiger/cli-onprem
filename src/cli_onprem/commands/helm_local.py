@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import pathlib
-import shutil
 import subprocess
 import sys
 import tarfile
@@ -13,19 +12,20 @@ from typing import Any, Set
 
 import typer
 import yaml
-from rich.console import Console
 from typing_extensions import Annotated
 
-context_settings = {
-    "ignore_unknown_options": True,  # Always allow unknown options
-    "allow_extra_args": True,  # Always allow extra args
-}
-
-app = typer.Typer(
-    help="Helm 차트 관련 작업 수행",
-    context_settings=context_settings,
+from ..libs import (
+    CLIError,
+    check_cli_tool,
+    create_typer_app,
+    filter_completions,
+    get_command_output,
+    run_command,
 )
-console = Console()
+from ..libs.progress import ProgressReporter
+
+app, console = create_typer_app("Helm 차트 관련 작업 수행")
+progress = ProgressReporter(console)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,17 +38,6 @@ logger = logging.getLogger(__name__)
 ImageSet = Set[str]
 
 
-def check_helm_cli_installed() -> None:
-    """Helm CLI가 설치되어 있는지 확인합니다.
-
-    설치되어 있지 않은 경우 안내 메시지를 출력하고 프로그램을 종료합니다.
-    """
-    if shutil.which("helm") is None:
-        console.print("[bold red]오류: Helm CLI가 설치되어 있지 않습니다[/bold red]")
-        console.print(
-            "[yellow]Helm CLI 설치 방법: https://helm.sh/ko/docs/intro/install/[/yellow]"
-        )
-        raise typer.Exit(code=1)
 
 
 def extract_chart(chart_archive: pathlib.Path, dest_dir: pathlib.Path) -> pathlib.Path:
@@ -123,12 +112,15 @@ def helm_dependency_update(chart_dir: pathlib.Path) -> None:
         chart_dir: Helm 차트 디렉토리
     """
     logger.info(f"차트 의존성 업데이트: {chart_dir}")
-    subprocess.run(
-        ["helm", "dependency", "update", str(chart_dir)],
-        check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    try:
+        run_command(
+            ["helm", "dependency", "update", str(chart_dir)],
+            console,
+            capture_output=True,
+            check=False
+        )
+    except Exception:
+        pass
     logger.info("의존성 업데이트 완료")
 
 
@@ -169,8 +161,7 @@ def helm_template(chart_dir: pathlib.Path, values_files: list[pathlib.Path]) -> 
     logger.info(f"차트 템플릿 렌더링 중: {chart_dir}")
     logger.info(f"실행 명령어: {' '.join(cmd)}")
 
-    result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-    return result.stdout
+    return get_command_output(cmd, console)
 
 
 def _add_repo_tag_digest(
@@ -351,27 +342,22 @@ def complete_chart_path(incomplete: str) -> list[str]:
             if path.is_file():
                 matches.append(str(path))
 
-        if shutil.which("helm") is not None:
-            try:
-                result = subprocess.run(
-                    ["helm", "list", "-o", "json"],
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                )
-                releases = json.loads(result.stdout)
-                for release in releases:
-                    chart_name = release.get("chart", "")
-                    if chart_name:
-                        matches.append(chart_name)
-            except Exception:
-                pass
+        try:
+            output = get_command_output(
+                ["helm", "list", "-o", "json"],
+                console
+            )
+            releases = json.loads(output)
+            for release in releases:
+                chart_name = release.get("chart", "")
+                if chart_name:
+                    matches.append(chart_name)
+        except Exception:
+            pass
 
         return matches
 
-    matches = fetch_chart_paths()
-
-    return [m for m in matches if m.startswith(incomplete)]
+    return filter_completions(fetch_chart_paths, incomplete)
 
 
 CHART_ARG = Annotated[
@@ -396,9 +382,7 @@ def complete_values_file(incomplete: str) -> list[str]:
                 matches.append(str(path))
         return matches
 
-    matches = fetch_values_files()
-
-    return [m for m in matches if m.startswith(incomplete)]
+    return filter_completions(fetch_values_files, incomplete)
 
 
 VALUES_OPTION = typer.Option(
@@ -443,7 +427,12 @@ def extract_images(
     if quiet:
         logging.getLogger().setLevel(logging.ERROR)
 
-    check_helm_cli_installed()  # Helm CLI 의존성 확인
+    check_cli_tool(
+        "helm",
+        "Helm CLI가 설치되어 있지 않습니다",
+        "https://helm.sh/ko/docs/intro/install/",
+        console
+    )
     logger.info(f"스크립트 시작: 차트={chart}, values 파일={values or '없음'}")
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -469,17 +458,12 @@ def extract_images(
                     for image in images:
                         console.print(image)
             else:
-                console.print("[bold red]이미지 필드를 찾을 수 없음[/bold red]")
-                raise typer.Exit(code=1)
+                CLIError.print_error(console, "이미지 필드를 찾을 수 없음")
         except FileNotFoundError as e:
-            console.print(f"[bold red]오류: 파일을 찾을 수 없습니다: {e}[/bold red]")
-            raise typer.Exit(code=1) from e
+            CLIError.print_error(console, f"파일을 찾을 수 없습니다: {e}", e)
         except ValueError as e:
-            console.print(f"[bold red]오류: 잘못된 입력 값: {e}[/bold red]")
-            raise typer.Exit(code=1) from e
+            CLIError.print_error(console, f"잘못된 입력 값: {e}", e)
         except subprocess.CalledProcessError as e:
-            console.print(f"[bold red]오류: 명령어 실행 실패: {e}[/bold red]")
-            raise typer.Exit(code=1) from e
+            CLIError.print_error(console, f"명령어 실행 실패: {e}", e)
         except Exception as e:
-            console.print(f"[bold red]오류 발생: {e}[/bold red]")
-            raise typer.Exit(code=1) from None
+            CLIError.print_error(console, f"오류 발생: {e}")

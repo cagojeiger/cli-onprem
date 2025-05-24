@@ -13,20 +13,15 @@ from typing import Dict, List, Optional
 import boto3
 import typer
 import yaml
-from rich.console import Console
 from rich.prompt import Confirm, Prompt
 from tqdm import tqdm
 
-context_settings = {
-    "ignore_unknown_options": True,  # Always allow unknown options
-    "allow_extra_args": True,  # Always allow extra args
-}
+from ..libs import ConfigManager, create_typer_app
+from ..libs.autocomplete import filter_completions
+from ..libs.progress import ProgressReporter
 
-app = typer.Typer(
-    help="S3 공유 관련 작업 수행",
-    context_settings=context_settings,
-)
-console = Console()
+app, console = create_typer_app("S3 공유 관련 작업 수행")
+progress = ProgressReporter(console)
 
 DEFAULT_PROFILE = "default_profile"
 
@@ -36,23 +31,13 @@ def complete_profile(incomplete: str) -> List[str]:
 
     def fetch_profiles() -> List[str]:
         try:
-            credential_path = get_credential_path()
-            if not credential_path.exists():
-                return []
-
-            with open(credential_path) as f:
-                credentials = yaml.safe_load(f) or {}
-
-            if not credentials:
-                return []
-
-            profiles = list(credentials.keys())
-            return profiles
+            config_manager = ConfigManager("credential.yaml")
+            credentials = config_manager.load_config()
+            return list(credentials.keys()) if credentials else []
         except Exception:
-            return []  # 오류 발생 시 자동완성 제안 없음
+            return []
 
-    profiles = fetch_profiles()
-    return [p for p in profiles if p.startswith(incomplete)]
+    return filter_completions(fetch_profiles, incomplete)
 
 
 PROFILE_OPTION = typer.Option(
@@ -79,8 +64,8 @@ PARALLEL_OPTION = typer.Option(8, "--parallel", help="동시 업로드 쓰레드
 
 def get_credential_path() -> pathlib.Path:
     """자격증명 파일 경로를 반환합니다."""
-    config_dir = pathlib.Path.home() / ".cli-onprem"
-    return config_dir / "credential.yaml"
+    config_manager = ConfigManager("credential.yaml")
+    return config_manager.config_path
 
 
 def generate_s3_path(src_path: pathlib.Path, s3_prefix: str) -> str:
@@ -107,13 +92,9 @@ def complete_bucket(incomplete: str) -> List[str]:
 
     def fetch_buckets() -> List[str]:
         try:
-            credential_path = get_credential_path()
-            if not credential_path.exists():
-                return []
-
-            with open(credential_path) as f:
-                credentials = yaml.safe_load(f) or {}
-
+            config_manager = ConfigManager("credential.yaml")
+            credentials = config_manager.load_config()
+            
             if not credentials:
                 return []
 
@@ -128,14 +109,11 @@ def complete_bucket(incomplete: str) -> List[str]:
             )
 
             response = s3_client.list_buckets()
-            buckets = [bucket["Name"] for bucket in response["Buckets"]]
-            return buckets
-        except Exception as e:
-            console.print(f"[yellow]버킷 자동완성 오류: {e}[/yellow]")
+            return [bucket["Name"] for bucket in response["Buckets"]]
+        except Exception:
             return []
 
-    buckets = fetch_buckets()
-    return [b for b in buckets if b.startswith(incomplete)]
+    return filter_completions(fetch_buckets, incomplete)
 
 
 def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
