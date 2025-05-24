@@ -8,7 +8,7 @@ logger = logging.getLogger("cli-onprem")
 
 def set_log_level(level: str) -> None:
     """로그 레벨을 설정합니다.
-    
+
     Args:
         level: 로그 레벨 (DEBUG, INFO, WARNING, ERROR)
     """
@@ -17,10 +17,10 @@ def set_log_level(level: str) -> None:
 
 def get_logger(name: str) -> logging.Logger:
     """모듈별 로거를 반환합니다.
-    
+
     Args:
         name: 모듈 이름
-        
+
     Returns:
         설정된 로거
     """
