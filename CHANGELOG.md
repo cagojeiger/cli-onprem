@@ -2,6 +2,64 @@
 
 
 
+## v0.11.1 (2025-05-24)
+
+### Documentation
+
+* docs: standardize command documentation with comprehensive source analysis
+
+- Add documentation template (TEMPLATE.md) for consistent structure
+- Update docker_tar.md with multi-architecture support and retry logic details
+- Enhance helm-local.md with multi-values file processing and JSON output
+- Expand s3-share.md with detailed subcommand descriptions and profile management
+- Improve tar-fat32.md with SHA256 verification and restore script documentation
+- Include real-world usage scenarios, troubleshooting guides, and cross-references
+- Apply emoji-based visual improvements and structured tables throughout
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`7b523c4`](https://github.com/cagojeiger/cli-onprem/commit/7b523c40f2f6a84528547966f903787304420b9f))
+
+* docs: enhance README with comprehensive command documentation and examples
+
+- Add detailed feature descriptions for all 4 main commands
+- Include quick start examples for each command
+- Reorganize structure with clear sections and emoji indicators
+- Add command-specific options and usage patterns
+- Improve overall readability and user experience
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`b627d58`](https://github.com/cagojeiger/cli-onprem/commit/b627d58e156e58545486cd7172f7967cb1c59f10))
+
+* docs: update sync instructions ([`d193b60`](https://github.com/cagojeiger/cli-onprem/commit/d193b60afead7118ca0b4c4b3bbf95cddaebd39e))
+
+### Fix
+
+* fix: resolve pre-commit issues in helm-local tests
+
+- Remove unused mock variables (mock_check, mock_dep)
+- Fix line length issues
+- Add type annotations to inner function
+- Remove unnecessary assertions for unused mocks ([`e0ff794`](https://github.com/cagojeiger/cli-onprem/commit/e0ff7940b1dbf89edee437128f3e36231949a13e))
+
+### Test
+
+* test: enhance helm-local test coverage
+
+- Add test for JSON output format (--json flag)
+- Add test for multiple values files handling
+- Add test for --raw option (currently not implemented)
+- Add test for helm dependency update failure handling
+- Add test for helm template command failure
+
+These tests improve coverage for documented features and edge cases.
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`42ed8df`](https://github.com/cagojeiger/cli-onprem/commit/42ed8dfe9e6ec3436cac989b9f66c8d4ffca402d))
+
+
 ## v0.11.0 (2025-05-24)
 
 ### Chore
