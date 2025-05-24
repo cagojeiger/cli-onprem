@@ -2,6 +2,67 @@
 
 
 
+## v0.11.2 (2025-05-24)
+
+### Documentation
+
+* docs: 함수형 프로그래밍 아키텍처 문서 추가 (한국어)
+
+- 제안된 함수형 아키텍처 문서화
+- 디렉토리 구조 및 모듈별 책임 설명
+- 마이그레이션 가이드 및 테스트 전략 제공
+- helm-local 리팩토링 예시 포함
+
+이 아키텍처는 다음을 촉진합니다:
+- 명확한 관심사 분리
+- 순수 함수를 통한 테스트 용이성
+- 서비스 레이어의 재사용성
+- 모든 명령어에 걸친 일관된 패턴 ([`f23d85e`](https://github.com/cagojeiger/cli-onprem/commit/f23d85ed8d15444b0f2b195c49711576921eef0e))
+
+### Fix
+
+* fix: 로깅 초기화 추가로 로그 메시지 출력 복원
+
+- init_logging() 함수 추가하여 기본 로깅 설정
+- extract_images 명령어 실행 시 로깅 시스템 초기화
+- quiet 옵션이 없을 때 INFO 레벨 로그 출력 ([`b5963f7`](https://github.com/cagojeiger/cli-onprem/commit/b5963f7a88db8e0eebe0cd8089c3f16abdfde9cb))
+
+* fix: 파일 끝에 개행 문자 추가
+
+- 모든 Python 파일 끝에 개행 문자 추가
+- POSIX 표준 준수 ([`dfea77f`](https://github.com/cagojeiger/cli-onprem/commit/dfea77f47941c997a2f78aff11f40af083aa3c3d))
+
+* fix: 줄 길이 제한 초과 문제 수정
+
+- helm.py의 docstring 줄 길이를 88자 이내로 조정 ([`f85b6bc`](https://github.com/cagojeiger/cli-onprem/commit/f85b6bca0460b8474b60b0206d3ca389ecb3b739))
+
+### Refactor
+
+* refactor: helm-local을 함수형 아키텍처로 리팩토링
+
+- 비즈니스 로직을 services 레이어로 분리 (docker.py, helm.py)
+- 공통 유틸리티를 utils 레이어로 분리 (shell.py, file.py, formatting.py)
+- 프레임워크 기능을 core 레이어로 분리 (types.py, logging.py, errors.py)
+- commands/helm_local.py를 얇은 오케스트레이션 레이어로 축소
+- 테스트의 import 경로를 새로운 구조에 맞게 수정
+
+이 리팩토링의 이점:
+- 각 함수를 독립적으로 테스트 가능
+- 서비스 레이어를 다른 명령어에서도 재사용 가능
+- 명확한 관심사 분리로 유지보수성 향상
+- 함수형 프로그래밍 원칙 적용
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`e3c0458`](https://github.com/cagojeiger/cli-onprem/commit/e3c04583607b84d6a4d504fb1a65f8724f50ec0c))
+
+### Style
+
+* style: ruff-format 적용
+
+- 코드 포맷팅 규칙에 따라 자동 정리 ([`e726f25`](https://github.com/cagojeiger/cli-onprem/commit/e726f2588df286e6be9bc39ad741d603cd8f3790))
+
+
 ## v0.11.1 (2025-05-24)
 
 ### Documentation
