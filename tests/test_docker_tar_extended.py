@@ -9,12 +9,9 @@ from typer.testing import CliRunner
 
 from cli_onprem.__main__ import app
 from cli_onprem.commands.docker_tar import (
-    check_image_arch_compatibility,
     check_image_exists,
     generate_filename,
-    get_image_architecture,
     parse_image_reference,
-    remove_image,
     run_docker_command,
 )
 
@@ -197,100 +194,3 @@ def test_docker_tar_save_with_output() -> None:
                 cmd = mock_run.call_args[0][0]
                 assert cmd[0:3] == ["docker", "save", "-o"]
                 assert str(output_file) in cmd
-
-
-def test_get_image_architecture_success() -> None:
-    """Test getting image architecture successfully."""
-    with mock.patch("subprocess.run") as mock_run:
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=[
-                "docker",
-                "inspect",
-                "--type=image",
-                "--format",
-                "{{.Architecture}}",
-                "test:image",
-            ],
-            returncode=0,
-            stdout="amd64\n",
-            stderr="",
-        )
-
-        result = get_image_architecture("test:image")
-
-        assert result == "amd64"
-        mock_run.assert_called_once()
-
-
-def test_get_image_architecture_not_found() -> None:
-    """Test getting architecture when image doesn't exist."""
-    with mock.patch("subprocess.run") as mock_run:
-        mock_run.side_effect = subprocess.CalledProcessError(
-            returncode=1,
-            cmd=[
-                "docker",
-                "inspect",
-                "--type=image",
-                "--format",
-                "{{.Architecture}}",
-                "nonexistent:image",
-            ],
-        )
-
-        result = get_image_architecture("nonexistent:image")
-
-        assert result is None
-
-
-def test_remove_image_success() -> None:
-    """Test removing image successfully."""
-    with mock.patch("cli_onprem.commands.docker_tar.run_docker_command") as mock_run:
-        mock_run.return_value = (True, "")
-
-        success, error = remove_image("test:image", quiet=True)
-
-        assert success is True
-        assert error == ""
-        mock_run.assert_called_once_with(["docker", "rmi", "test:image"])
-
-
-def test_check_image_arch_compatibility_no_image() -> None:
-    """Test arch compatibility when image doesn't exist."""
-    with mock.patch(
-        "cli_onprem.commands.docker_tar.get_image_architecture"
-    ) as mock_get:
-        mock_get.return_value = None
-
-        result = check_image_arch_compatibility("test:image", "amd64", quiet=True)
-
-        assert result is True  # Should pull
-
-
-def test_check_image_arch_compatibility_same_arch() -> None:
-    """Test arch compatibility when architectures match."""
-    with mock.patch(
-        "cli_onprem.commands.docker_tar.get_image_architecture"
-    ) as mock_get:
-        mock_get.return_value = "amd64"
-
-        result = check_image_arch_compatibility("test:image", "linux/amd64", quiet=True)
-
-        assert result is False  # Should not pull
-
-
-def test_check_image_arch_compatibility_different_arch() -> None:
-    """Test arch compatibility when architectures differ."""
-    with mock.patch(
-        "cli_onprem.commands.docker_tar.get_image_architecture"
-    ) as mock_get:
-        mock_get.return_value = "arm64"
-
-        with mock.patch("cli_onprem.commands.docker_tar.remove_image") as mock_remove:
-            mock_remove.return_value = (True, "")
-
-            result = check_image_arch_compatibility(
-                "test:image", "linux/amd64", quiet=True
-            )
-
-            assert result is True  # Should pull
-            mock_remove.assert_called_once_with("test:image", True)
