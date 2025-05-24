@@ -2,6 +2,34 @@
 
 
 
+## v0.8.0 (2025-05-24)
+
+### Chore
+
+* chore: update uv.lock file
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`42dd6f3`](https://github.com/cagojeiger/cli-onprem/commit/42dd6f3de513d2a45a447b3581b308e2006ce1bd))
+
+### Documentation
+
+* docs: explain why arch option is needed ([`ace62eb`](https://github.com/cagojeiger/cli-onprem/commit/ace62ebb5ca8de03833d4a970f2d7685fe20cd23))
+
+### Feature
+
+* feat: improve s3-share sync and presign commands
+
+- Support both files and directories in sync command
+- Add cli-onprem-{date}-{folder/file} path format
+- Implement presign command with --select-folder option
+- Add autocompletion for cli-onprem folders
+- Support pipe input from sync to presign
+- Add CSV output format: filename,link,expire_at,size
+- Remove cache usage, use direct fetch for autocompletion
+- Update error messages and sync messages
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`19add4d`](https://github.com/cagojeiger/cli-onprem/commit/19add4decb4bf2429cd422936b84987bdc99d0a6))
+
+
 ## v0.7.0 (2025-05-24)
 
 ### Chore
