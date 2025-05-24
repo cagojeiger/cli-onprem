@@ -211,80 +211,6 @@ def check_image_exists(reference: str) -> bool:
         return False
 
 
-def get_image_architecture(reference: str) -> Optional[str]:
-    """이미지의 아키텍처를 가져옵니다. 이미지가 없으면 None을 반환합니다."""
-    cmd = [
-        "docker",
-        "inspect",
-        "--type=image",
-        "--format",
-        "{{.Architecture}}",
-        reference,
-    ]
-    try:
-        result = subprocess.run(
-            cmd,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            text=True,
-        )
-        return result.stdout.strip()
-    except subprocess.CalledProcessError:
-        return None
-
-
-def remove_image(reference: str, quiet: bool = False) -> Tuple[bool, str]:
-    """이미지를 삭제합니다."""
-    if not quiet:
-        console.print(f"[yellow]기존 이미지 {reference} 삭제 중...[/yellow]")
-    cmd = ["docker", "rmi", reference]
-    return run_docker_command(cmd)
-
-
-def check_image_arch_compatibility(
-    reference: str, expected_arch: str, quiet: bool = False
-) -> bool:
-    """이미지가 존재하고 예상 아키텍처와 일치하는지 확인합니다.
-
-    아키텍처가 다르면 기존 이미지를 삭제합니다.
-
-    Returns:
-        True: 이미지가 없거나 아키텍처가 다름 (pull 필요)
-        False: 이미지가 존재하고 아키텍처가 일치함 (pull 불필요)
-    """
-    current_arch = get_image_architecture(reference)
-
-    if current_arch is None:
-        return True
-
-    expected_arch_normalized = (
-        expected_arch.split("/")[-1] if "/" in expected_arch else expected_arch
-    )
-
-    if current_arch == expected_arch_normalized:
-        if not quiet:
-            console.print(
-                f"[green]이미지 {reference}가 이미 올바른 아키텍처({current_arch})로 "
-                f"존재합니다.[/green]"
-            )
-        return False
-    else:
-        if not quiet:
-            console.print(
-                f"[yellow]이미지 {reference}의 아키텍처가 다릅니다 "
-                f"(현재: {current_arch}, 요청: {expected_arch_normalized}). "
-                f"기존 이미지를 삭제합니다.[/yellow]"
-            )
-
-        success, error = remove_image(reference, quiet)
-        if not success:
-            console.print(f"[bold red]Error: 이미지 삭제 실패: {error}[/bold red]")
-            raise typer.Exit(code=1)
-
-        return True
-
-
 def pull_image(
     reference: str, quiet: bool = False, max_retries: int = 3, arch: str = "linux/amd64"
 ) -> Tuple[bool, str]:
@@ -391,14 +317,13 @@ def save(
             console.print("[yellow]작업이 취소되었습니다.[/yellow]")
             return
 
-    if check_image_arch_compatibility(reference, architecture, quiet):
-        if verbose:
-            console.print(f"[blue]이미지 {reference} 다운로드가 필요합니다.[/blue]")
+    if verbose:
+        console.print(f"[blue]이미지 {reference} 다운로드 중...[/blue]")
 
-        success, error = pull_image(reference, quiet, arch=f"linux/{architecture}")
-        if not success:
-            console.print(f"[bold red]Error: 이미지 다운로드 실패: {error}[/bold red]")
-            raise typer.Exit(code=1)
+    success, error = pull_image(reference, quiet, arch=f"linux/{architecture}")
+    if not success:
+        console.print(f"[bold red]Error: 이미지 다운로드 실패: {error}[/bold red]")
+        raise typer.Exit(code=1)
 
     if not quiet:
         console.print(f"[green]이미지 {reference} 저장 중...[/green]")
