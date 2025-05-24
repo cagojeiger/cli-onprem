@@ -47,9 +47,38 @@ S3 버킷 및 프리픽스 정보를 설정합니다. `init-credential` 명령 �
 | `--bucket TEXT` | S3 버킷 (자동완성 지원) |
 | `--prefix TEXT` | S3 프리픽스 (기본값: `/`, 자동완성 지원, 폴더 단위로 단계별 탐색) |
 
+### presign
+
+선택한 폴더의 파일들 또는 개별 파일에 대한 presigned URL을 생성합니다.
+
+#### 옵션
+
+| 옵션 | 설명 |
+|------|------|
+| `--select-path TEXT` | presign URL을 생성할 cli-onprem 폴더 또는 파일 선택 (자동완성 지원) |
+| `--output TEXT` | CSV 출력 파일 경로 |
+| `--profile TEXT` | 사용할 프로파일 이름 (기본값: `default_profile`) |
+| `--expiry INTEGER` | URL 만료 시간(초), 기본값: 3600(1시간) |
+
 
 
 ## 예제
+
+### presign 명령어 사용
+
+```bash
+# 폴더 내 모든 파일에 대한 presigned URL 생성
+cli-onprem s3-share presign --select-path cli-onprem-20250524-backups
+
+# 단일 파일에 대한 presigned URL 생성
+cli-onprem s3-share presign --select-path cli-onprem-20250524-config.json
+
+# 만료 시간 설정 (초 단위)
+cli-onprem s3-share presign --select-path cli-onprem-20250524-backups --expiry 7200
+
+# CSV 파일로 결과 저장
+cli-onprem s3-share presign --select-path cli-onprem-20250524-backups --output urls.csv
+```
 
 ### 기본 프로파일 생성
 
