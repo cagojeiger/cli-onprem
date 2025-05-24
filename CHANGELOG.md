@@ -2,6 +2,19 @@
 
 
 
+## v0.10.0 (2025-05-24)
+
+### Feature
+
+* feat: rename fatpack command to tar-fat32
+
+feat: rename helm command to helm-local
+
+chore: apply pre-commit
+
+chore: apply pre-commit ([`73ba220`](https://github.com/cagojeiger/cli-onprem/commit/73ba220d840b33a50c37f7ae69e886b8f51337b5))
+
+
 ## v0.9.0 (2025-05-24)
 
 ### Chore
