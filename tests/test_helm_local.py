@@ -8,13 +8,21 @@ from unittest import mock
 from typer.testing import CliRunner
 
 from cli_onprem.__main__ import app
-from cli_onprem.commands.helm_local import (
-    collect_images,
-    extract_chart,
-    helm_dependency_update,
-    helm_template,
+from cli_onprem.services.docker import (
+    extract_images_from_yaml as collect_images,
+)
+from cli_onprem.services.docker import (
     normalize_image_name,
+)
+from cli_onprem.services.helm import (
+    extract_chart,
     prepare_chart,
+)
+from cli_onprem.services.helm import (
+    render_template as helm_template,
+)
+from cli_onprem.services.helm import (
+    update_dependencies as helm_dependency_update,
 )
 
 runner = CliRunner()
@@ -167,7 +175,7 @@ def test_prepare_chart_with_archive() -> None:
         # Use a different approach to mock __str__
         mock_path.configure_mock(__str__=mock.MagicMock(return_value=str(chart_path)))
 
-        with mock.patch("cli_onprem.commands.helm_local.extract_chart") as mock_extract:
+        with mock.patch("cli_onprem.services.helm.extract_chart") as mock_extract:
             mock_extract.return_value = tmp_path / "extracted_chart"
 
             result = prepare_chart(mock_path, tmp_path)
@@ -178,7 +186,7 @@ def test_prepare_chart_with_archive() -> None:
 
 def test_helm_dependency_update() -> None:
     """Test helm dependency update command."""
-    with mock.patch("subprocess.run") as mock_run:
+    with mock.patch("cli_onprem.utils.shell.run_command") as mock_run:
         chart_dir = pathlib.Path("/path/to/chart")
         helm_dependency_update(chart_dir)
 
@@ -192,7 +200,7 @@ def test_helm_dependency_update() -> None:
 
 def test_helm_template() -> None:
     """Test helm template command."""
-    with mock.patch("subprocess.run") as mock_run:
+    with mock.patch("cli_onprem.utils.shell.run_command") as mock_run:
         chart_dir = pathlib.Path("/path/to/chart")
         values_files = [pathlib.Path("/path/to/values.yaml")]
 
@@ -219,18 +227,14 @@ def test_extract_images_command() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = pathlib.Path(tmpdir)
 
-        with mock.patch("cli_onprem.commands.helm_local.check_helm_cli_installed"):
-            with mock.patch(
-                "cli_onprem.commands.helm_local.prepare_chart"
-            ) as mock_prepare:
-                with mock.patch(
-                    "cli_onprem.commands.helm_local.helm_dependency_update"
-                ):
+        with mock.patch("cli_onprem.services.helm.check_helm_installed"):
+            with mock.patch("cli_onprem.services.helm.prepare_chart") as mock_prepare:
+                with mock.patch("cli_onprem.services.helm.update_dependencies"):
                     with mock.patch(
-                        "cli_onprem.commands.helm_local.helm_template"
+                        "cli_onprem.services.helm.render_template"
                     ) as mock_template:
                         with mock.patch(
-                            "cli_onprem.commands.helm_local.collect_images"
+                            "cli_onprem.services.docker.extract_images_from_yaml"
                         ) as mock_collect:
                             mock_prepare.return_value = tmp_path / "chart"
                             mock_template.return_value = """
@@ -270,18 +274,14 @@ def test_extract_images_json_output() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = pathlib.Path(tmpdir)
 
-        with mock.patch("cli_onprem.commands.helm_local.check_helm_cli_installed"):
-            with mock.patch(
-                "cli_onprem.commands.helm_local.prepare_chart"
-            ) as mock_prepare:
-                with mock.patch(
-                    "cli_onprem.commands.helm_local.helm_dependency_update"
-                ):
+        with mock.patch("cli_onprem.services.helm.check_helm_installed"):
+            with mock.patch("cli_onprem.services.helm.prepare_chart") as mock_prepare:
+                with mock.patch("cli_onprem.services.helm.update_dependencies"):
                     with mock.patch(
-                        "cli_onprem.commands.helm_local.helm_template"
+                        "cli_onprem.services.helm.render_template"
                     ) as mock_template:
                         with mock.patch(
-                            "cli_onprem.commands.helm_local.collect_images"
+                            "cli_onprem.services.docker.extract_images_from_yaml"
                         ) as mock_collect:
                             mock_prepare.return_value = tmp_path / "chart"
                             mock_template.return_value = """
@@ -336,18 +336,14 @@ def test_extract_images_multiple_values_files() -> None:
         values2 = tmp_path / "values2.yaml"
         values2.write_text("nginx:\n  tag: 1.21")  # This should override values1
 
-        with mock.patch("cli_onprem.commands.helm_local.check_helm_cli_installed"):
-            with mock.patch(
-                "cli_onprem.commands.helm_local.prepare_chart"
-            ) as mock_prepare:
-                with mock.patch(
-                    "cli_onprem.commands.helm_local.helm_dependency_update"
-                ):
+        with mock.patch("cli_onprem.services.helm.check_helm_installed"):
+            with mock.patch("cli_onprem.services.helm.prepare_chart") as mock_prepare:
+                with mock.patch("cli_onprem.services.helm.update_dependencies"):
                     with mock.patch(
-                        "cli_onprem.commands.helm_local.helm_template"
+                        "cli_onprem.services.helm.render_template"
                     ) as mock_template:
                         with mock.patch(
-                            "cli_onprem.commands.helm_local.collect_images"
+                            "cli_onprem.services.docker.extract_images_from_yaml"
                         ) as mock_collect:
                             mock_prepare.return_value = tmp_path / "chart"
 
@@ -388,18 +384,14 @@ def test_extract_images_raw_option() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = pathlib.Path(tmpdir)
 
-        with mock.patch("cli_onprem.commands.helm_local.check_helm_cli_installed"):
-            with mock.patch(
-                "cli_onprem.commands.helm_local.prepare_chart"
-            ) as mock_prepare:
-                with mock.patch(
-                    "cli_onprem.commands.helm_local.helm_dependency_update"
-                ):
+        with mock.patch("cli_onprem.services.helm.check_helm_installed"):
+            with mock.patch("cli_onprem.services.helm.prepare_chart") as mock_prepare:
+                with mock.patch("cli_onprem.services.helm.update_dependencies"):
                     with mock.patch(
-                        "cli_onprem.commands.helm_local.helm_template"
+                        "cli_onprem.services.helm.render_template"
                     ) as mock_template:
                         with mock.patch(
-                            "cli_onprem.commands.helm_local.collect_images"
+                            "cli_onprem.services.docker.extract_images_from_yaml"
                         ) as mock_collect:
                             mock_prepare.return_value = tmp_path / "chart"
                             mock_template.return_value = """
@@ -447,18 +439,14 @@ def test_helm_dependency_update_failure() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = pathlib.Path(tmpdir)
 
-        with mock.patch("cli_onprem.commands.helm_local.check_helm_cli_installed"):
-            with mock.patch(
-                "cli_onprem.commands.helm_local.prepare_chart"
-            ) as mock_prepare:
-                with mock.patch(
-                    "cli_onprem.commands.helm_local.helm_dependency_update"
-                ):
+        with mock.patch("cli_onprem.services.helm.check_helm_installed"):
+            with mock.patch("cli_onprem.services.helm.prepare_chart") as mock_prepare:
+                with mock.patch("cli_onprem.services.helm.update_dependencies"):
                     with mock.patch(
-                        "cli_onprem.commands.helm_local.helm_template"
+                        "cli_onprem.services.helm.render_template"
                     ) as mock_template:
                         with mock.patch(
-                            "cli_onprem.commands.helm_local.collect_images"
+                            "cli_onprem.services.docker.extract_images_from_yaml"
                         ) as mock_collect:
                             mock_prepare.return_value = tmp_path / "chart"
 
@@ -491,15 +479,11 @@ def test_helm_template_failure() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = pathlib.Path(tmpdir)
 
-        with mock.patch("cli_onprem.commands.helm_local.check_helm_cli_installed"):
-            with mock.patch(
-                "cli_onprem.commands.helm_local.prepare_chart"
-            ) as mock_prepare:
-                with mock.patch(
-                    "cli_onprem.commands.helm_local.helm_dependency_update"
-                ):
+        with mock.patch("cli_onprem.services.helm.check_helm_installed"):
+            with mock.patch("cli_onprem.services.helm.prepare_chart") as mock_prepare:
+                with mock.patch("cli_onprem.services.helm.update_dependencies"):
                     with mock.patch(
-                        "cli_onprem.commands.helm_local.helm_template"
+                        "cli_onprem.services.helm.render_template"
                     ) as mock_template:
                         mock_prepare.return_value = tmp_path / "chart"
 
