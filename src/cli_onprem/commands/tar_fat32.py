@@ -6,20 +6,15 @@ from pathlib import Path
 from typing import List, Optional
 
 import typer
-from rich.console import Console
 from rich.markup import escape
 from typing_extensions import Annotated
 
-context_settings = {
-    "ignore_unknown_options": True,  # Always allow unknown options
-    "allow_extra_args": True,  # Always allow extra args
-}
+from ..libs import CLIError, create_typer_app, filter_completions
+from ..libs.progress import ProgressReporter
+from ..libs.subprocess import run_command as run_cmd
 
-app = typer.Typer(
-    help="파일 압축과 분할 관리",
-    context_settings=context_settings,
-)
-console = Console()
+app, console = create_typer_app("파일 압축과 분할 관리")
+progress = ProgressReporter(console)
 
 DEFAULT_CHUNK_SIZE = "3G"
 
@@ -43,9 +38,7 @@ def complete_path(incomplete: str) -> List[str]:
 
         return matches
 
-    matches = fetch_paths()
-
-    return [m for m in matches if m.startswith(incomplete)]
+    return filter_completions(fetch_paths, incomplete)
 
 
 PATH_ARG = Annotated[
@@ -65,12 +58,9 @@ PURGE_OPTION = typer.Option(False, "--purge", help="성공 복원 시 .pack 폴�
 def run_command(cmd: List[str], cwd: Optional[str] = None) -> bool:
     """셸 명령어를 실행합니다."""
     try:
-        subprocess.run(cmd, check=True, cwd=cwd)
+        run_cmd(cmd, console, check=True, cwd=cwd)
         return True
-    except subprocess.CalledProcessError as e:
-        msg = "[bold red]Error: 명령어 실행 실패 (코드 "
-        error_msg = f"{msg}{e.returncode})[/bold red]"
-        console.print(error_msg)
+    except Exception:
         return False
 
 
@@ -140,20 +130,17 @@ def pack(
     parts_dir = f"{output_dir}/parts"
 
     if os.path.exists(output_dir):
-        prefix = "[bold yellow]경고: 출력 디렉터리 "
-        suffix = "가 이미 존재합니다. 삭제 중...[/bold yellow]"
-        msg = f"{prefix}{output_dir}{suffix}"
-        console.print(msg)
+        progress.warning(f"출력 디렉터리 {output_dir}가 이미 존재합니다. 삭제 중...")
         import shutil
 
         shutil.rmtree(output_dir)
-        console.print("[bold green]기존 디렉터리 삭제 완료[/bold green]")
+        progress.success("기존 디렉터리 삭제 완료")
 
-    console.print(f"[bold blue]► 출력 디렉터리 {output_dir} 생성 중...[/bold blue]")
+    progress.step(f"출력 디렉터리 {output_dir} 생성 중...")
     os.makedirs(parts_dir)
 
     archive_path = f"{output_dir}/archive.tar.gz"
-    console.print(f"[bold blue]► {basename} 압축 중...[/bold blue]")
+    progress.step(f"{basename} 압축 중...")
 
     if path.is_dir():
         cmd = ["tar", "-czvf", archive_path, "-C", str(path.parent), basename]
@@ -161,29 +148,25 @@ def pack(
         cmd = ["tar", "-czvf", archive_path, "-C", str(path.parent), basename]
 
     if not run_command(cmd):
-        console.print("[bold red]오류: 압축 실패[/bold red]")
-        raise typer.Exit(code=1)
+        CLIError.print_error(console, "압축 실패")
 
-    msg = f"[bold blue]► 압축 파일을 {chunk_size} 크기로 분할 중...[/bold blue]"
-    console.print(msg)
+    progress.step(f"압축 파일을 {chunk_size} 크기로 분할 중...")
     split_cmd = ["split", "-b", chunk_size, archive_path, f"{parts_dir}/"]
 
     try:
         if not run_command(split_cmd):
-            console.print("[bold red]오류: 파일 분할 실패[/bold red]")
-            raise typer.Exit(code=1)
+            CLIError.print_error(console, "파일 분할 실패")
 
         import glob
 
         parts = glob.glob(f"{parts_dir}/*")
         if parts and not parts[0].endswith(".part"):
-            console.print("[bold blue]► 파일 이름 형식 조정 중...[/bold blue]")
+            progress.step("파일 이름 형식 조정 중...")
             for i, part in enumerate(sorted(parts)):
                 new_name = f"{parts_dir}/{i:04d}.part"
                 os.rename(part, new_name)
     except Exception as e:
-        console.print(f"[bold red]오류: 파일 분할 중 예외 발생: {str(e)}[/bold red]")
-        raise typer.Exit(code=1) from e
+        CLIError.print_error(console, f"파일 분할 중 예외 발생: {str(e)}", e)
 
     os.remove(archive_path)
 
@@ -199,13 +182,13 @@ def pack(
         f.write(restore_script)
     os.chmod(f"{output_dir}/restore.sh", 0o755)  # 실행 권한 부여
 
-    console.print("[bold blue]► 크기 정보 파일 생성 중...[/bold blue]")
+    progress.step("크기 정보 파일 생성 중...")
     size_mb = get_file_size_mb(output_dir)
     size_filename = f"{size_mb}_MB"
     with open(f"{output_dir}/{size_filename}", "w") as f:
         pass  # 빈 파일 생성
 
-    console.print(f"[bold green]🎉 압축 완료: {escape(output_dir)}[/bold green]")
+    progress.success(f"압축 완료: {escape(output_dir)}")
     console.print(f"[green]복원하려면: cd {escape(output_dir)} && ./restore.sh[/green]")
 
 
@@ -223,9 +206,7 @@ def complete_pack_dir(incomplete: str) -> List[str]:
 
         return matches
 
-    matches = fetch_pack_dirs()
-
-    return [m for m in matches if m.startswith(incomplete)]
+    return filter_completions(fetch_pack_dirs, incomplete)
 
 
 PACK_DIR_ARG = Annotated[
@@ -251,25 +232,20 @@ def restore(
 ) -> None:
     """압축된 파일을 복원합니다."""
     if not pack_dir.exists() or not pack_dir.is_dir():
-        error_msg = (
-            f"[bold red]오류: {pack_dir}가 존재하지 않거나 "
-            f"디렉터리가 아닙니다[/bold red]"
+        CLIError.print_error(
+            console,
+            f"{pack_dir}가 존재하지 않거나 디렉터리가 아닙니다"
         )
-        console.print(error_msg)
-        raise typer.Exit(code=1)
 
     if not (pack_dir / "restore.sh").exists():
-        error_msg = f"[bold red]오류: {pack_dir}에 restore.sh가 없습니다[/bold red]"
-        console.print(error_msg)
-        raise typer.Exit(code=1)
+        CLIError.print_error(console, f"{pack_dir}에 restore.sh가 없습니다")
 
     cmd = ["./restore.sh"]
     if purge:
         cmd.append("--purge")
 
-    console.print("[bold blue]► 복원 스크립트 실행 중...[/bold blue]")
+    progress.step("복원 스크립트 실행 중...")
     if not run_command(cmd, cwd=str(pack_dir)):
-        console.print("[bold red]오류: 복원 실패[/bold red]")
-        raise typer.Exit(code=1)
+        CLIError.print_error(console, "복원 실패")
 
-    console.print("[bold green]🎉 복원 완료[/bold green]")
+    progress.success("복원 완료")

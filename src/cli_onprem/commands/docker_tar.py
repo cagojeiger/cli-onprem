@@ -1,79 +1,37 @@
 """CLI-ONPREM을 위한 Docker 이미지 tar 명령어."""
 
-import shutil
 import subprocess
 import time
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
 import typer
-from rich.console import Console
 from rich.prompt import Confirm
 from typing_extensions import Annotated
 
-context_settings = {
-    "ignore_unknown_options": True,  # Always allow unknown options
-    "allow_extra_args": True,  # Always allow extra args
-}
+from ..libs import CLIError, check_cli_tool, create_typer_app
+from ..libs.autocomplete import filter_completions
+from ..libs.progress import ProgressReporter
+from ..libs.subprocess import get_command_output, run_command
 
-app = typer.Typer(
-    help="Docker 이미지를 tar 파일로 저장",
-    context_settings=context_settings,
-)
-console = Console()
-
-
-def check_docker_cli_installed() -> None:
-    """Docker CLI가 설치되어 있는지 확인합니다.
-
-    설치되어 있지 않은 경우 안내 메시지를 출력하고 프로그램을 종료합니다.
-    """
-    if shutil.which("docker") is None:
-        console.print("[bold red]오류: Docker CLI가 설치되어 있지 않습니다[/bold red]")
-        console.print(
-            "[yellow]Docker CLI 설치 방법: https://docs.docker.com/engine/install/[/yellow]"
-        )
-        raise typer.Exit(code=1)
+app, console = create_typer_app("Docker 이미지를 tar 파일로 저장")
+progress = ProgressReporter(console)
 
 
 def complete_docker_reference(incomplete: str) -> List[str]:
     """도커 이미지 레퍼런스 자동완성: 로컬에 있는 이미지 제안"""
 
     def fetch_docker_images() -> List[str]:
-        if shutil.which("docker") is None:
-            console.print(
-                "[yellow]Docker CLI가 없어 자동완성을 제공할 수 없습니다[/yellow]"
-            )
-            return []  # Docker CLI가 없으면 자동완성 제안 없음
-
         try:
-            result = subprocess.run(
+            output = get_command_output(
                 ["docker", "images", "--format", "{{.Repository}}:{{.Tag}}"],
-                capture_output=True,
-                text=True,
-                check=True,
+                console
             )
-            return result.stdout.splitlines()
-        except Exception as e:
-            console.print(f"[yellow]이미지 자동완성 오류: {e}[/yellow]")
+            return output.splitlines()
+        except Exception:
             return []
 
-    all_images = fetch_docker_images()
-
-    registry_filter = None
-    if "/" in incomplete:
-        parts = incomplete.split("/", 1)
-        if "." in parts[0] or ":" in parts[0]:  # 레지스트리로 판단
-            registry_filter = parts[0]
-
-    filtered_images = [img for img in all_images if img.startswith(incomplete)]
-
-    if registry_filter:
-        filtered_images = [
-            img for img in filtered_images if img.startswith(registry_filter)
-        ]
-
-    return filtered_images
+    return filter_completions(fetch_docker_images, incomplete)
 
 
 REFERENCE_ARG = Annotated[
@@ -201,16 +159,15 @@ def generate_filename(
 
 def check_image_exists(reference: str) -> bool:
     """이미지가 로컬에 존재하는지 확인합니다."""
-    cmd = ["docker", "inspect", "--type=image", reference]
     try:
-        subprocess.run(
-            cmd,
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+        run_command(
+            ["docker", "inspect", "--type=image", reference],
+            console,
+            capture_output=True,
+            check=True
         )
         return True
-    except subprocess.CalledProcessError:
+    except Exception:
         return False
 
 
@@ -219,34 +176,31 @@ def pull_image(
 ) -> Tuple[bool, str]:
     """이미지를 Docker Hub에서 가져옵니다."""
     if not quiet:
-        console.print(f"[yellow]이미지 {reference} 다운로드 중...[/yellow]")
+        progress.info(f"이미지 {reference} 다운로드 중...")
+    
     cmd = ["docker", "pull", "--platform", arch, reference]
-
     retry_count = 0
     last_error = ""
 
     while retry_count <= max_retries:
-        success, error = run_docker_command(cmd)
-        if success:
+        try:
+            run_command(cmd, console, capture_output=True)
             return True, ""
-
-        last_error = error
-        if isinstance(error, bytes):
-            error_str = error.decode("utf-8", errors="replace")
-        else:
-            error_str = str(error)
-
-        if "timeout" in error_str.lower() and retry_count < max_retries:
-            retry_count += 1
-            wait_time = 2**retry_count  # 지수 백오프 (2, 4, 8초)
-            if not quiet:
-                console.print(
-                    f"[yellow]이미지 다운로드 타임아웃, {retry_count}/{max_retries} "
-                    f"재시도 중 ({wait_time}초 대기)...[/yellow]"
-                )
-            time.sleep(wait_time)
-        else:
-            break
+        except Exception as e:
+            last_error = str(e)
+            error_str = last_error.lower()
+            
+            if "timeout" in error_str and retry_count < max_retries:
+                retry_count += 1
+                wait_time = 2**retry_count  # 지수 백오프 (2, 4, 8초)
+                if not quiet:
+                    progress.warning(
+                        f"이미지 다운로드 타임아웃, {retry_count}/{max_retries} "
+                        f"재시도 중 ({wait_time}초 대기)..."
+                    )
+                time.sleep(wait_time)
+            else:
+                break
 
     return False, last_error
 
@@ -256,12 +210,10 @@ def run_docker_command(
 ) -> Tuple[bool, str]:
     """Docker 명령어를 실행합니다."""
     try:
-        subprocess.run(
-            cmd, check=True, stdout=stdout, stderr=subprocess.PIPE, text=True
-        )
+        run_command(cmd, console, stdout=stdout, check=True, capture_output=True)
         return True, ""
-    except subprocess.CalledProcessError as e:
-        return False, e.stderr
+    except Exception as e:
+        return False, str(e)
 
 
 @app.command()
@@ -285,7 +237,12 @@ def save(
 
     이미지 레퍼런스 구문: [<registry>/][<namespace>/]<image>[:<tag>]
     """
-    check_docker_cli_installed()  # Docker CLI 의존성 확인
+    check_cli_tool(
+        "docker",
+        "Docker CLI가 설치되어 있지 않습니다",
+        "https://docs.docker.com/engine/install/",
+        console
+    )
     registry, namespace, image, tag = parse_image_reference(reference)
 
     architecture = "amd64"
@@ -306,15 +263,15 @@ def save(
         full_path = dest_path
 
     if verbose:
-        console.print(f"[bold blue]레퍼런스: {reference}[/bold blue]")
-        console.print(f"[blue]분해: {registry}/{namespace}/{image}:{tag}[/blue]")
-        console.print(f"[blue]아키텍처: {architecture}[/blue]")
-        console.print(f"[blue]파일명: {filename}[/blue]")
-        console.print(f"[blue]저장 경로: {full_path}[/blue]")
+        progress.info(f"레퍼런스: {reference}")
+        progress.info(f"분해: {registry}/{namespace}/{image}:{tag}")
+        progress.info(f"아키텍처: {architecture}")
+        progress.info(f"파일명: {filename}")
+        progress.info(f"저장 경로: {full_path}")
 
     if dry_run:
         if not quiet:
-            console.print(f"[yellow]다음 파일을 생성할 예정: {full_path}[/yellow]")
+            progress.warning(f"다음 파일을 생성할 예정: {full_path}")
         return
 
     if not stdout and full_path.exists() and not force:
@@ -322,19 +279,18 @@ def save(
             f"[yellow]파일 {full_path}이(가) 이미 존재합니다. "
             f"덮어쓰시겠습니까?[/yellow]"
         ):
-            console.print("[yellow]작업이 취소되었습니다.[/yellow]")
+            progress.warning("작업이 취소되었습니다.")
             return
 
     if verbose:
-        console.print(f"[blue]이미지 {reference} 다운로드 중...[/blue]")
+        progress.info(f"이미지 {reference} 다운로드 중...")
 
     success, error = pull_image(reference, quiet, arch=f"linux/{architecture}")
     if not success:
-        console.print(f"[bold red]Error: 이미지 다운로드 실패: {error}[/bold red]")
-        raise typer.Exit(code=1)
+        CLIError.print_error(console, f"이미지 다운로드 실패: {error}")
 
     if not quiet:
-        console.print(f"[green]이미지 {reference} 저장 중...[/green]")
+        progress.step("이미지 저장 중...")
 
     if stdout:
         docker_cmd = ["docker", "save", reference]
@@ -344,10 +300,7 @@ def save(
         success, error = run_docker_command(docker_cmd)
 
     if not success:
-        console.print(f"[bold red]Error: {error}[/bold red]")
-        raise typer.Exit(code=1)
+        CLIError.print_error(console, error)
 
     if not stdout and not quiet:
-        console.print(
-            f"[bold green]이미지가 성공적으로 저장되었습니다: {full_path}[/bold green]"
-        )
+        progress.success(f"이미지가 성공적으로 저장되었습니다: {full_path}")
