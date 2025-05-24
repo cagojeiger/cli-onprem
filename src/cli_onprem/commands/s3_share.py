@@ -715,7 +715,10 @@ def presign(
 
     path_prefix = path_from_pipe if path_from_pipe else f"{s3_prefix}{select_path}"
 
-    is_folder = path_prefix.endswith("/") or "/" not in select_path.split("-")[-1]
+    has_file_extension = "." in select_path.split("/")[-1]
+    is_folder = path_prefix.endswith("/") or (
+        not has_file_extension and "/" not in select_path.split("-")[-1]
+    )
 
     if is_folder and not path_prefix.endswith("/"):
         path_prefix = f"{path_prefix}/"
