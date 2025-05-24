@@ -11,7 +11,7 @@ from rich.console import Console
 from typing_extensions import Annotated
 
 from cli_onprem.core.errors import handle_error
-from cli_onprem.core.logging import set_log_level
+from cli_onprem.core.logging import init_logging, set_log_level
 from cli_onprem.core.types import CONTEXT_SETTINGS
 from cli_onprem.services import docker, helm
 from cli_onprem.utils import formatting
@@ -102,6 +102,9 @@ def extract_images(
     출력은 기본적으로 각 줄마다 하나의 이미지 참조를 표시하며,
     --json 옵션을 사용하면 JSON 배열 형식으로 출력됩니다.
     """
+    # 로깅 초기화
+    init_logging()
+    
     if quiet:
         set_log_level("ERROR")
 
