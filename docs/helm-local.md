@@ -74,10 +74,10 @@ cli-onprem helm-local extract-images prometheus-22.6.1.tgz --json
 
 ```bash
 # 모든 이미지를 추출하여 tar 파일로 저장
-cli-onprem helm-local extract-images nginx-13.2.0.tgz | xargs -n1 cli-onprem docker-tar save -o /path/to/images/
+cli-onprem helm-local extract-images nginx-13.2.0.tgz | xargs -n1 cli-onprem docker-tar save -d /path/to/images/
 
 # 특정 values 파일을 적용하여 이미지 추출 후 저장
-cli-onprem helm-local extract-images wordpress-15.2.35.tgz -f prod-values.yaml | xargs -n1 cli-onprem docker-tar save -o /path/to/images/
+cli-onprem helm-local extract-images wordpress-15.2.35.tgz -f prod-values.yaml | xargs -n1 cli-onprem docker-tar save -d /path/to/images/
 ```
 
 이 방식으로 Helm 차트에서 사용되는 모든 이미지를 자동으로 추출하여 tar 파일로 저장할 수 있습니다.

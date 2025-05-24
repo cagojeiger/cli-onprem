@@ -169,8 +169,8 @@ def test_docker_tar_save_stdout() -> None:
             assert mock_run.call_args[1]["stdout"] == subprocess.STDOUT
 
 
-def test_docker_tar_save_with_output() -> None:
-    """Test docker-tar save command with output option."""
+def test_docker_tar_save_with_destination() -> None:
+    """Test docker-tar save command with destination option."""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
         output_file = tmp_path / "output.tar"
@@ -187,10 +187,40 @@ def test_docker_tar_save_with_output() -> None:
 
                 result = runner.invoke(
                     app,
-                    ["docker-tar", "save", "test:image", "--output", str(output_file)],
+                    [
+                        "docker-tar",
+                        "save",
+                        "test:image",
+                        "--destination",
+                        str(output_file),
+                    ],
                 )
 
                 assert result.exit_code == 0
                 cmd = mock_run.call_args[0][0]
                 assert cmd[0:3] == ["docker", "save", "-o"]
                 assert str(output_file) in cmd
+
+
+def test_docker_tar_save_create_directory(tmp_path: Path) -> None:
+    """Destination directory should be created when absent."""
+    dest_dir = tmp_path / "2025"
+
+    with mock.patch("cli_onprem.commands.docker_tar.check_image_exists") as mock_check:
+        mock_check.return_value = True
+
+        with mock.patch(
+            "cli_onprem.commands.docker_tar.run_docker_command"
+        ) as mock_run:
+            mock_run.return_value = (True, "")
+
+            result = runner.invoke(
+                app,
+                ["docker-tar", "save", "test:image", "--destination", str(dest_dir)],
+            )
+
+            assert result.exit_code == 0
+            assert dest_dir.is_dir()
+            expected_path = dest_dir / "test__image__amd64.tar"
+            cmd = mock_run.call_args[0][0]
+            assert expected_path.as_posix() in cmd

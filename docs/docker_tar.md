@@ -12,7 +12,7 @@ cli-onprem docker-tar save <reference> [OPTIONS]
 
 - `<reference>`: 필수. 컨테이너 이미지 레퍼런스 (형식: `[<registry>/][<namespace>/]<image>[:<tag>]`).
 - `--arch <os/arch>`: 선택 사항. 추출 플랫폼 지정. 허용 값은 `linux/amd64` 또는 `linux/arm64`이며 기본값은 `linux/amd64`.
-- `--output`, `-o <dir|file>`: 선택 사항. 저장 위치(디렉터리 또는 완전한 경로). 기본값: 현재 작업 디렉터리.
+- `--destination`, `-d <dir|file>`: 선택 사항. 저장 위치(디렉터리 또는 완전한 경로). 기본값: 현재 작업 디렉터리. 디렉터리가 없으면 생성합니다.
 - `--stdout`: 선택 사항. tar 스트림을 표준 출력으로 내보냄 (파이프용).
 - `--force`, `-f`: 선택 사항. 동일 이름 파일 덮어쓰기. 기본값: False.
 - `--quiet`, `-q`: 선택 사항. 에러만 출력. 기본값: False.
@@ -55,7 +55,7 @@ cli-onprem docker-tar save ghcr.io/bitnami/redis:7.2.4 --arch linux/arm64
 # 출력: ./ghcr.io__bitnami__redis__7.2.4__arm64.tar 생성
 
 # 절대 경로 지정
-cli-onprem docker-tar save alpine:3.20 --output /var/backup
+cli-onprem docker-tar save alpine:3.20 --destination /var/backup
 # 출력: /var/backup/alpine__3.20__amd64.tar 생성
 
 # 파이프-압축
