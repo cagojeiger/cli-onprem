@@ -27,8 +27,7 @@ def test_sync_command_local_path_not_exist() -> None:
         result = runner.invoke(app, ["s3-share", "sync", "/not/exist/path"])
 
         assert result.exit_code == 1
-        assert "오류: 소스 경로 '/not/exist/path'가 존재하지 않거나" in result.stdout
-        assert "디렉토리가 아닙니다." in result.stdout
+        assert "오류: 소스 경로 '/not/exist/path'가 존재하지 않습니다." in result.stdout
 
 
 def test_sync_command_profile_not_exist(tmp_path: pathlib.Path) -> None:

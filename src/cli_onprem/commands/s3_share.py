@@ -1,10 +1,16 @@
 """CLI-ONPREM을 위한 S3 공유 관련 명령어."""
 
+import csv
+import datetime
 import hashlib
+import io
 import os
 import pathlib
+import sys
+from datetime import timedelta
 from typing import Dict, List, Optional
 
+import boto3
 import typer
 import yaml
 from rich.console import Console
@@ -45,9 +51,7 @@ def complete_profile(incomplete: str) -> List[str]:
         except Exception:
             return []  # 오류 발생 시 자동완성 제안 없음
 
-    from cli_onprem.libs.cache import get_cached_data
-
-    profiles = get_cached_data("profile_list", fetch_profiles, ttl=300)
+    profiles = fetch_profiles()
     return [p for p in profiles if p.startswith(incomplete)]
 
 
@@ -79,13 +83,30 @@ def get_credential_path() -> pathlib.Path:
     return config_dir / "credential.yaml"
 
 
+def generate_s3_path(src_path: pathlib.Path, s3_prefix: str) -> str:
+    """S3 업로드 경로를 생성합니다.
+
+    Args:
+        src_path: 소스 파일 또는 디렉토리 경로
+        s3_prefix: S3 프리픽스
+
+    Returns:
+        S3 경로 (프리픽스 포함)
+    """
+    date_str = datetime.datetime.now().strftime("%Y%m%d")
+    if src_path.is_dir():
+        folder_name = src_path.name
+        return f"{s3_prefix}cli-onprem-{date_str}-{folder_name}/"
+    else:
+        file_name = src_path.name
+        return f"{s3_prefix}cli-onprem-{date_str}-{file_name}"
+
+
 def complete_bucket(incomplete: str) -> List[str]:
     """S3 버킷 자동완성: 접근 가능한 버킷 제안"""
 
     def fetch_buckets() -> List[str]:
         try:
-            import boto3
-
             credential_path = get_credential_path()
             if not credential_path.exists():
                 return []
@@ -113,9 +134,7 @@ def complete_bucket(incomplete: str) -> List[str]:
             console.print(f"[yellow]버킷 자동완성 오류: {e}[/yellow]")
             return []
 
-    from cli_onprem.libs.cache import get_cached_data
-
-    buckets = get_cached_data("s3_buckets", fetch_buckets, ttl=600)
+    buckets = fetch_buckets()
     return [b for b in buckets if b.startswith(incomplete)]
 
 
@@ -124,8 +143,6 @@ def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
 
     def fetch_prefixes(bucket_name: str, current_path: str) -> List[str]:
         try:
-            import boto3
-
             if not bucket_name:
                 credential_path = get_credential_path()
                 if not credential_path.exists():
@@ -199,13 +216,7 @@ def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
         except Exception:
             pass
 
-    cache_key = f"s3_prefixes_{bucket_name}_{current_path}"
-
-    from cli_onprem.libs.cache import get_cached_data
-
-    prefixes = get_cached_data(
-        cache_key, lambda: fetch_prefixes(bucket_name, current_path), ttl=600
-    )
+    prefixes = fetch_prefixes(bucket_name, current_path)
 
     return [p for p in prefixes if p.startswith(incomplete)]
 
@@ -401,7 +412,7 @@ def calculate_file_md5(file_path: pathlib.Path) -> Optional[str]:
         return None
 
 
-SRC_PATH_ARGUMENT = typer.Argument(..., help="동기화할 로컬 폴더 경로")
+SRC_PATH_ARGUMENT = typer.Argument(..., help="동기화할 로컬 파일 또는 폴더 경로")
 
 
 @app.command()
@@ -413,11 +424,10 @@ def sync(
     parallel: int = PARALLEL_OPTION,
     profile: str = PROFILE_OPTION,
 ) -> None:
-    """로컬 디렉터리와 S3 프리픽스 간 증분 동기화를 수행합니다."""
-    if not src_path.exists() or not src_path.is_dir():
+    """로컬 파일/디렉터리와 S3 프리픽스 간 증분 동기화를 수행합니다."""
+    if not src_path.exists():
         console.print(
-            f"[bold red]오류: 소스 경로 '{src_path}'가 존재하지 않거나 "
-            f"디렉토리가 아닙니다.[/bold red]"
+            f"[bold red]오류: 소스 경로 '{src_path}'가 존재하지 않습니다.[/bold red]"
         )
         raise typer.Exit(code=1)
 
@@ -433,11 +443,18 @@ def sync(
     if s3_prefix and not s3_prefix.endswith("/"):
         s3_prefix = f"{s3_prefix}/"
 
-    import boto3
+    final_s3_path = generate_s3_path(src_path, s3_prefix)
 
-    console.print(
-        f"[bold blue]S3 동기화: {src_path} → s3://{s3_bucket}/{s3_prefix}[/bold blue]"
-    )
+    if src_path.is_dir():
+        console.print(
+            f"[bold blue]폴더 '{src_path.name}'를 S3 경로 "
+            f"s3://{s3_bucket}/{final_s3_path}에 동기화합니다[/bold blue]"
+        )
+    else:
+        console.print(
+            f"[bold blue]파일 '{src_path.name}'를 S3 경로 "
+            f"s3://{s3_bucket}/{final_s3_path}에 동기화합니다[/bold blue]"
+        )
 
     s3_client = boto3.client(
         "s3",
@@ -449,7 +466,7 @@ def sync(
     s3_objects = {}
     paginator = s3_client.get_paginator("list_objects_v2")
     try:
-        for page in paginator.paginate(Bucket=s3_bucket, Prefix=s3_prefix):
+        for page in paginator.paginate(Bucket=s3_bucket, Prefix=final_s3_path):
             if "Contents" in page:
                 for obj in page["Contents"]:
                     key = obj["Key"]
@@ -467,37 +484,98 @@ def sync(
     skip_count = 0
     delete_count = 0
 
-    for local_path in src_path.glob("**/*"):
-        if local_path.is_file():
-            rel_path = local_path.relative_to(src_path)
-            s3_key = f"{s3_prefix}{str(rel_path).replace(os.sep, '/')}"
-            local_files.add(s3_key)
+    if src_path.is_dir():
+        for local_path in src_path.glob("**/*"):
+            if local_path.is_file():
+                rel_path = local_path.relative_to(src_path)
+                s3_key = f"{final_s3_path}{str(rel_path).replace(os.sep, '/')}"
+                local_files.add(s3_key)
 
-            if s3_key in s3_objects:
-                s3_obj = s3_objects[s3_key]
-                local_size = local_path.stat().st_size
-                local_mtime = local_path.stat().st_mtime
+                if s3_key in s3_objects:
+                    s3_obj = s3_objects[s3_key]
+                    local_size = local_path.stat().st_size
+                    local_mtime = local_path.stat().st_mtime
 
-                local_md5 = calculate_file_md5(local_path)
+                    local_md5 = calculate_file_md5(local_path)
 
-                if local_md5 is not None and local_md5 == s3_obj["ETag"]:
-                    skip_count += 1
-                    continue
-                elif local_md5 is None:
-                    s3_mtime = s3_obj["LastModified"].timestamp()
-                    if local_size == s3_obj["Size"] and local_mtime <= s3_mtime:
+                    if local_md5 is not None and local_md5 == s3_obj["ETag"]:
                         skip_count += 1
                         continue
+                    elif local_md5 is None:
+                        s3_mtime = s3_obj["LastModified"].timestamp()
+                        if local_size == s3_obj["Size"] and local_mtime <= s3_mtime:
+                            skip_count += 1
+                            continue
 
+                try:
+                    with tqdm(
+                        total=local_path.stat().st_size,
+                        unit="B",
+                        unit_scale=True,
+                        desc=f"업로드: {rel_path}",
+                    ) as pbar:
+                        s3_client.upload_file(
+                            str(local_path),
+                            s3_bucket,
+                            s3_key,
+                            Callback=lambda bytes_transferred: pbar.update(
+                                bytes_transferred
+                            ),
+                        )
+                    upload_count += 1
+                except Exception as e:
+                    console.print(
+                        f"[bold red]오류: '{rel_path}' 업로드 실패: {e}[/bold red]"
+                    )
+    else:
+        rel_path = pathlib.Path(src_path.name)
+        s3_key = final_s3_path
+        local_files.add(s3_key)
+
+        if s3_key in s3_objects:
+            s3_obj = s3_objects[s3_key]
+            local_size = src_path.stat().st_size
+            local_mtime = src_path.stat().st_mtime
+
+            local_md5 = calculate_file_md5(src_path)
+
+            if local_md5 is not None and local_md5 == s3_obj["ETag"]:
+                skip_count += 1
+            elif local_md5 is None:
+                s3_mtime = s3_obj["LastModified"].timestamp()
+                if local_size == s3_obj["Size"] and local_mtime <= s3_mtime:
+                    skip_count += 1
+                else:
+                    try:
+                        with tqdm(
+                            total=src_path.stat().st_size,
+                            unit="B",
+                            unit_scale=True,
+                            desc=f"업로드: {rel_path}",
+                        ) as pbar:
+                            s3_client.upload_file(
+                                str(src_path),
+                                s3_bucket,
+                                s3_key,
+                                Callback=lambda bytes_transferred: pbar.update(
+                                    bytes_transferred
+                                ),
+                            )
+                        upload_count += 1
+                    except Exception as e:
+                        console.print(
+                            f"[bold red]오류: '{rel_path}' 업로드 실패: {e}[/bold red]"
+                        )
+        else:
             try:
                 with tqdm(
-                    total=local_path.stat().st_size,
+                    total=src_path.stat().st_size,
                     unit="B",
                     unit_scale=True,
                     desc=f"업로드: {rel_path}",
                 ) as pbar:
                     s3_client.upload_file(
-                        str(local_path),
+                        str(src_path),
                         s3_bucket,
                         s3_key,
                         Callback=lambda bytes_transferred: pbar.update(
@@ -532,3 +610,190 @@ def sync(
         f"[bold green]동기화 완료: {upload_count} 업로드, {skip_count} 스킵, "
         f"{delete_count} 삭제되었음.[/bold green]"
     )
+
+    if not sys.stdout.isatty():
+        if src_path.is_dir():
+            print(f"{src_path.name}:{final_s3_path}")
+        else:
+            print(f"{src_path.name}:{final_s3_path}")
+
+
+def complete_cli_onprem_folders(incomplete: str) -> List[str]:
+    """cli-onprem 프리픽스 폴더 자동완성"""
+
+    def fetch_folders() -> List[str]:
+        try:
+            credential_path = get_credential_path()
+            if not credential_path.exists():
+                return []
+
+            with open(credential_path) as f:
+                credentials = yaml.safe_load(f) or {}
+
+            if not credentials:
+                return []
+
+            profile = next(iter(credentials))
+            creds = credentials[profile]
+
+            s3_client = boto3.client(
+                "s3",
+                aws_access_key_id=creds["aws_access_key"],
+                aws_secret_access_key=creds["aws_secret_key"],
+                region_name=creds["region"],
+            )
+
+            bucket = creds.get("bucket", "")
+            prefix = creds.get("prefix", "")
+
+            if prefix and not prefix.endswith("/"):
+                prefix = f"{prefix}/"
+
+            response = s3_client.list_objects_v2(
+                Bucket=bucket, Delimiter="/", Prefix=f"{prefix}cli-onprem-"
+            )
+
+            folders = []
+            if "CommonPrefixes" in response:
+                for common_prefix in response["CommonPrefixes"]:
+                    folder_path = common_prefix["Prefix"]
+                    folder_name = folder_path.rstrip("/").split("/")[-1]
+                    if folder_name.startswith("cli-onprem-"):
+                        folders.append(folder_name)
+
+            return folders
+        except Exception:
+            return []
+
+    folders = fetch_folders()
+    return [f for f in folders if f.startswith(incomplete)]
+
+
+@app.command()
+def presign(
+    select_folder: str = typer.Option(
+        ...,
+        "--select-folder",
+        help="presign URL을 생성할 cli-onprem 폴더 선택",
+        autocompletion=complete_cli_onprem_folders,
+    ),
+    output: Optional[str] = typer.Option(None, "--output", help="CSV 출력 파일 경로"),
+    profile: str = PROFILE_OPTION,
+    expiry: int = typer.Option(
+        3600, "--expiry", help="URL 만료 시간(초), 기본값: 3600(1시간)"
+    ),
+) -> None:
+    """선택한 폴더의 파일들에 대한 presigned URL을 생성합니다."""
+    folder_from_pipe = None
+    if not sys.stdin.isatty():
+        pipe_input = sys.stdin.read().strip()
+        if pipe_input:
+            parts = pipe_input.split(":", 1)
+            if len(parts) == 2:
+                folder_name, s3_path = parts
+                folder_from_pipe = s3_path
+
+    creds = get_profile_credentials(profile, check_bucket=True)
+
+    s3_bucket = creds.get("bucket", "")
+    s3_prefix = creds.get("prefix", "")
+
+    if not s3_bucket:
+        console.print("[bold red]오류: S3 버킷이 지정되지 않았습니다.[/bold red]")
+        raise typer.Exit(code=1)
+
+    if s3_prefix and not s3_prefix.endswith("/"):
+        s3_prefix = f"{s3_prefix}/"
+
+    folder_prefix = (
+        folder_from_pipe if folder_from_pipe else f"{s3_prefix}{select_folder}"
+    )
+
+    if not folder_prefix.endswith("/"):
+        folder_prefix = f"{folder_prefix}/"
+
+    console.print(
+        f"[bold blue]폴더 '{folder_prefix}'의 presigned URL 생성 중...[/bold blue]"
+    )
+
+    s3_client = boto3.client(
+        "s3",
+        aws_access_key_id=creds["aws_access_key"],
+        aws_secret_access_key=creds["aws_secret_key"],
+        region_name=creds["region"],
+    )
+
+    files = []
+    paginator = s3_client.get_paginator("list_objects_v2")
+
+    try:
+        for page in paginator.paginate(Bucket=s3_bucket, Prefix=folder_prefix):
+            if "Contents" in page:
+                for obj in page["Contents"]:
+                    if not obj["Key"].endswith("/"):  # 디렉토리 제외
+                        files.append(
+                            {
+                                "key": obj["Key"],
+                                "size": obj["Size"],
+                                "filename": obj["Key"].split("/")[-1],
+                            }
+                        )
+    except Exception as e:
+        console.print(f"[bold red]오류: S3 객체 목록 가져오기 실패: {e}[/bold red]")
+        raise typer.Exit(code=1) from e
+
+    if not files:
+        console.print(
+            f"[yellow]경고: 폴더 '{folder_prefix}'에 파일이 없습니다.[/yellow]"
+        )
+        raise typer.Exit(code=0)
+
+    csv_data = []
+    expire_time = datetime.datetime.now() + timedelta(seconds=expiry)
+
+    for file_info in files:
+        try:
+            presigned_url = s3_client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": s3_bucket, "Key": file_info["key"]},
+                ExpiresIn=expiry,
+            )
+
+            csv_data.append(
+                {
+                    "filename": file_info["filename"],
+                    "link": presigned_url,
+                    "expire_at": expire_time.isoformat(),
+                    "size": file_info["size"],
+                }
+            )
+        except Exception as e:
+            console.print(
+                f"[yellow]경고: '{file_info['filename']}' URL 생성 실패: {e}[/yellow]"
+            )
+
+    if output:
+        try:
+            with open(output, "w", newline="") as csvfile:
+                writer = csv.DictWriter(
+                    csvfile, fieldnames=["filename", "link", "expire_at", "size"]
+                )
+                writer.writeheader()
+                for row in csv_data:
+                    writer.writerow(row)
+            console.print(f"[bold green]CSV 파일 저장됨: {output}[/bold green]")
+        except Exception as e:
+            console.print(f"[bold red]오류: CSV 파일 저장 실패: {e}[/bold red]")
+            raise typer.Exit(code=1) from e
+    else:
+        output_csv = io.StringIO()
+        writer = csv.DictWriter(
+            output_csv, fieldnames=["filename", "link", "expire_at", "size"]
+        )
+        writer.writeheader()
+        for row in csv_data:
+            writer.writerow(row)
+
+        print(output_csv.getvalue())
+
+    console.print(f"[bold green]URL 생성 완료: {len(csv_data)}개 파일[/bold green]")
