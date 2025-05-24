@@ -118,8 +118,11 @@ ARCH_OPTION = typer.Option(
     callback=_validate_arch,
     autocompletion=complete_arch,
 )
-OUTPUT_OPTION = typer.Option(
-    None, "--output", "-o", help="저장 위치(디렉터리 또는 완전한 경로)"
+DEST_OPTION = typer.Option(
+    None,
+    "--destination",
+    "-d",
+    help="저장 위치(디렉터리 또는 완전한 경로)",
 )
 STDOUT_OPTION = typer.Option(
     False, "--stdout", help="tar 스트림을 표준 출력으로 내보냄"
@@ -271,7 +274,7 @@ def save(
         ),
     ],
     arch: str = ARCH_OPTION,
-    output: Optional[Path] = OUTPUT_OPTION,
+    destination: Optional[Path] = DEST_OPTION,
     stdout: bool = STDOUT_OPTION,
     force: bool = FORCE_OPTION,
     quiet: bool = QUIET_OPTION,
@@ -291,11 +294,16 @@ def save(
 
     filename = generate_filename(registry, namespace, image, tag, architecture)
 
-    output_path = Path.cwd() if output is None else output
-    if output_path.is_dir():
-        full_path = output_path / filename
+    dest_path = Path.cwd() if destination is None else destination
+
+    if destination is None or (
+        dest_path.is_dir() or (not dest_path.exists() and not dest_path.suffix)
+    ):
+        if not dest_path.exists():
+            dest_path.mkdir(parents=True, exist_ok=True)
+        full_path = dest_path / filename
     else:
-        full_path = output_path
+        full_path = dest_path
 
     if verbose:
         console.print(f"[bold blue]레퍼런스: {reference}[/bold blue]")
