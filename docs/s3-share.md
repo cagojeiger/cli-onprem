@@ -84,6 +84,16 @@ cli-onprem s3-share sync <path> [OPTIONS]
 | `--profile TEXT` | 사용할 프로파일 이름 (기본값: `default_profile`) |
 
 
+> 참고: `--bucket`과 `--prefix`를 지정하지 않으면 선택한 프로파일에 저장된
+> 값이 자동으로 적용됩니다.
+
+동기화 시 S3 경로는 `cli-onprem-YYYYMMDD-<폴더>` 또는
+`cli-onprem-YYYYMMDD-<파일>` 형식으로 생성됩니다.
+
+출력이 파이프로 연결된 경우 `로컬이름:S3경로` 형태가 출력되며 다른 명령에서
+바로 사용할 수 있습니다.
+
+
 
 ## 예제
 
