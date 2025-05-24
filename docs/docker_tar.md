@@ -19,6 +19,18 @@ cli-onprem docker-tar save <reference> [OPTIONS]
 - `--dry-run`: 선택 사항. 실제 저장하지 않고 파일명만 출력. 기본값: False.
 - `--verbose`, `-v`: 선택 사항. DEBUG 로그 출력. 기본값: False.
 
+## 왜 --arch 옵션을 사용하나
+
+Docker 태그는 하나의 digest만 가리키므로 동일한 태그를 서로 다른 아키텍처로
+`docker pull`하면 태그가 마지막에 받은 아키텍처로 덮어써집니다. 예를 들어
+`linux/amd64` 이미지를 받은 뒤 같은 태그를 `linux/arm64`로 다시 받으면 태그가
+arm64 digest로 갱신되어 이후 해당 태그를 실행할 때 잘못된 바이너리가 실행될 수
+있습니다. 또한 이전 아키텍처의 레이어가 dangling 상태로 남을 수 있습니다.
+
+`docker-tar`은 이러한 문제를 피하기 위해 항상 `docker pull --platform`을 호출해
+특정 아키텍처 이미지를 직접 가져옵니다. 이 동작은 잘못된 바이너리 실행을
+방지하고 불필요한 dangling 레이어가 생기는 것을 막아 줍니다.
+
 ## 파일명 형식
 
 저장된 파일은 다음 형식의 이름을 가집니다:
