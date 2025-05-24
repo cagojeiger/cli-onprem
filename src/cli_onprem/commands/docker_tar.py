@@ -317,14 +317,13 @@ def save(
             console.print("[yellow]작업이 취소되었습니다.[/yellow]")
             return
 
-    if not check_image_exists(reference):
-        if verbose:
-            console.print(f"[blue]이미지 {reference}가 로컬에 없습니다.[/blue]")
+    if verbose:
+        console.print(f"[blue]이미지 {reference} 다운로드 중...[/blue]")
 
-        success, error = pull_image(reference, quiet, arch=f"linux/{architecture}")
-        if not success:
-            console.print(f"[bold red]Error: 이미지 다운로드 실패: {error}[/bold red]")
-            raise typer.Exit(code=1)
+    success, error = pull_image(reference, quiet, arch=f"linux/{architecture}")
+    if not success:
+        console.print(f"[bold red]Error: 이미지 다운로드 실패: {error}[/bold red]")
+        raise typer.Exit(code=1)
 
     if not quiet:
         console.print(f"[green]이미지 {reference} 저장 중...[/green]")
