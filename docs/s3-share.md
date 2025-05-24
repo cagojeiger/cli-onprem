@@ -20,6 +20,9 @@ cli-onprem s3-share init-bucket --profile staging
 # 기존 프로파일 덮어쓰기
 cli-onprem s3-share init-credential --profile production --overwrite
 cli-onprem s3-share init-bucket --profile production
+
+# 로컬 폴더 동기화
+cli-onprem s3-share sync ./local-folder
 ```
 
 ## 서브커맨드
@@ -60,6 +63,26 @@ S3 버킷 및 프리픽스 정보를 설정합니다. `init-credential` 명령 �
 | `--profile TEXT` | 사용할 프로파일 이름 (기본값: `default_profile`) |
 | `--expiry INTEGER` | URL 만료 시간(초), 기본값: 3600(1시간) |
 
+### sync
+
+로컬 폴더와 S3 버킷의 내용을 동기화합니다.
+
+기본 사용법:
+
+```bash
+cli-onprem s3-share sync <path> [OPTIONS]
+```
+
+#### 옵션
+
+| 옵션 | 설명 |
+|------|------|
+| `--bucket TEXT` | 동기화할 S3 버킷(필요한 경우) |
+| `--prefix TEXT` | 동기화 대상 S3 프리픽스 |
+| `--delete/--no-delete` | 원격에 없는 파일 삭제 여부 (기본값: `--no-delete`) |
+| `--parallel INTEGER` | 병렬 업로드 처리 개수 |
+| `--profile TEXT` | 사용할 프로파일 이름 (기본값: `default_profile`) |
+
 
 
 ## 예제
@@ -78,6 +101,12 @@ cli-onprem s3-share presign --select-path cli-onprem-20250524-backups --expiry 7
 
 # CSV 파일로 결과 저장
 cli-onprem s3-share presign --select-path cli-onprem-20250524-backups --output urls.csv
+```
+
+### sync 명령어 사용
+
+```bash
+cli-onprem s3-share sync ./local-folder --prefix backups/ --delete
 ```
 
 ### 기본 프로파일 생성
