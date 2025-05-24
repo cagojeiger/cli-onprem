@@ -85,6 +85,9 @@ OUTPUT_OPTION = typer.Option(
 SELECT_FOLDER_OPTION = typer.Option(
     None, "--select-folder", help="선택할 폴더 이름 (미지정 시 폴더 목록에서 선택)"
 )
+FOLDER_NAME_OPTION = typer.Option(
+    None, "--folder-name", help="업로드할 폴더 이름 (미지정 시 기본 경로 사용)"
+)
 
 
 def get_credential_path() -> pathlib.Path:
@@ -418,9 +421,21 @@ def sync(
     delete: bool = DELETE_OPTION,
     parallel: int = PARALLEL_OPTION,
     date_prefix: bool = DATE_PREFIX_OPTION,
+    folder_name: Optional[str] = FOLDER_NAME_OPTION,
     profile: str = PROFILE_OPTION,
 ) -> None:
     """로컬 디렉터리와 S3 프리픽스 간 증분 동기화를 수행합니다."""
+    if folder_name:
+        folder_path = src_path / folder_name
+        if not folder_path.exists():
+            try:
+                folder_path.mkdir(parents=True, exist_ok=True)
+                console.print(f"[blue]폴더 생성됨: '{folder_name}'[/blue]")
+            except Exception as e:
+                console.print(f"[bold red]오류: 폴더 생성 실패: {e}[/bold red]")
+                raise typer.Exit(code=1) from e
+        src_path = folder_path
+
     if not src_path.exists() or not src_path.is_dir():
         console.print(
             f"[bold red]오류: 소스 경로 '{src_path}'가 존재하지 않거나 "
@@ -445,6 +460,10 @@ def sync(
         date_prefix_str = f"cli-onprem-{today}-"
         s3_prefix = f"{s3_prefix}{date_prefix_str}"
         console.print(f"[blue]날짜 기반 프리픽스 적용: {date_prefix_str}[/blue]")
+
+    if folder_name:
+        s3_prefix = f"{s3_prefix}{folder_name}/"
+        console.print(f"[blue]폴더 지정됨: '{folder_name}'[/blue]")
 
     import boto3
 
