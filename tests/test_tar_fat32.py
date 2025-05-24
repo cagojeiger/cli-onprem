@@ -1,4 +1,4 @@
-"""Tests for the fatpack command."""
+"""Tests for the tar-fat32 command."""
 
 import subprocess
 import tempfile
@@ -8,7 +8,7 @@ from unittest import mock
 from typer.testing import CliRunner
 
 from cli_onprem.__main__ import app
-from cli_onprem.commands.fatpack import (
+from cli_onprem.commands.tar_fat32 import (
     generate_restore_script,
     get_file_size_mb,
     run_command,
@@ -68,7 +68,7 @@ def test_pack_command() -> None:
         test_file = tmp_path / "testfile"
         test_file.write_text("test content")
 
-        with mock.patch("cli_onprem.commands.fatpack.run_command") as mock_run:
+        with mock.patch("cli_onprem.commands.tar_fat32.run_command") as mock_run:
             mock_run.return_value = True
 
             with mock.patch("os.path.exists") as mock_exists:
@@ -85,13 +85,13 @@ def test_pack_command() -> None:
                                 with mock.patch("os.rename"):
                                     with mock.patch("os.remove"):
                                         with mock.patch(
-                                            "cli_onprem.commands.fatpack.get_file_size_mb"
+                                            "cli_onprem.commands.tar_fat32.get_file_size_mb"
                                         ) as mock_size:
                                             mock_size.return_value = 10
 
                                             result = runner.invoke(
                                                 app,
-                                                ["fatpack", "pack", str(test_file)],
+                                                ["tar-fat32", "pack", str(test_file)],
                                             )
 
                                             assert result.exit_code == 0
@@ -104,7 +104,7 @@ def test_pack_command_directory() -> None:
         test_dir = tmp_path / "testdir"
         test_dir.mkdir()
 
-        with mock.patch("cli_onprem.commands.fatpack.run_command") as mock_run:
+        with mock.patch("cli_onprem.commands.tar_fat32.run_command") as mock_run:
             mock_run.return_value = True
 
             with mock.patch("os.path.exists") as mock_exists:
@@ -124,13 +124,17 @@ def test_pack_command_directory() -> None:
                                     with mock.patch("os.rename"):
                                         with mock.patch("os.remove"):
                                             with mock.patch(
-                                                "cli_onprem.commands.fatpack.get_file_size_mb"
+                                                "cli_onprem.commands.tar_fat32.get_file_size_mb"
                                             ) as mock_size:
                                                 mock_size.return_value = 10
 
                                                 result = runner.invoke(
                                                     app,
-                                                    ["fatpack", "pack", str(test_dir)],
+                                                    [
+                                                        "tar-fat32",
+                                                        "pack",
+                                                        str(test_dir),
+                                                    ],
                                                 )
 
                                                 assert result.exit_code == 0
@@ -145,10 +149,10 @@ def test_restore_command() -> None:
         restore_script = pack_dir / "restore.sh"
         restore_script.write_text("#!/bin/sh\necho test")
 
-        with mock.patch("cli_onprem.commands.fatpack.run_command") as mock_run:
+        with mock.patch("cli_onprem.commands.tar_fat32.run_command") as mock_run:
             mock_run.return_value = True
 
-            result = runner.invoke(app, ["fatpack", "restore", str(pack_dir)])
+            result = runner.invoke(app, ["tar-fat32", "restore", str(pack_dir)])
 
             assert result.exit_code == 0
             mock_run.assert_called_once_with(["./restore.sh"], cwd=str(pack_dir))
@@ -163,11 +167,11 @@ def test_restore_command_with_purge() -> None:
         restore_script = pack_dir / "restore.sh"
         restore_script.write_text("#!/bin/sh\necho test")
 
-        with mock.patch("cli_onprem.commands.fatpack.run_command") as mock_run:
+        with mock.patch("cli_onprem.commands.tar_fat32.run_command") as mock_run:
             mock_run.return_value = True
 
             result = runner.invoke(
-                app, ["fatpack", "restore", str(pack_dir), "--purge"]
+                app, ["tar-fat32", "restore", str(pack_dir), "--purge"]
             )
 
             assert result.exit_code == 0
@@ -182,7 +186,7 @@ def test_restore_command_invalid_directory() -> None:
         tmp_path = Path(tmpdir)
         non_existent_dir = tmp_path / "nonexistent"
 
-        result = runner.invoke(app, ["fatpack", "restore", str(non_existent_dir)])
+        result = runner.invoke(app, ["tar-fat32", "restore", str(non_existent_dir)])
 
         assert result.exit_code == 1
         assert "존재하지 않거나" in result.stdout
@@ -195,7 +199,7 @@ def test_restore_command_missing_script() -> None:
         empty_dir = tmp_path / "empty_dir"
         empty_dir.mkdir()
 
-        result = runner.invoke(app, ["fatpack", "restore", str(empty_dir)])
+        result = runner.invoke(app, ["tar-fat32", "restore", str(empty_dir)])
 
         assert result.exit_code == 1
         assert "restore.sh가 없습니다" in result.stdout
