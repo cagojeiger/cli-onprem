@@ -2,6 +2,25 @@
 
 
 
+## v0.11.0 (2025-05-24)
+
+### Chore
+
+* chore: apply pre-commit ([`821f898`](https://github.com/cagojeiger/cli-onprem/commit/821f898eb984ae71e244dc06fb3078f7a66a08a9))
+
+### Documentation
+
+* docs: replace size.txt with size marker ([`771c5d7`](https://github.com/cagojeiger/cli-onprem/commit/771c5d7d5a48bec3775228c6a719ba480b46f414))
+
+* docs: add s3-share sync instructions ([`3a2ea64`](https://github.com/cagojeiger/cli-onprem/commit/3a2ea64aba9d6910d3aa04c23aaacf96c74b4f26))
+
+* docs(readme): remove directory scanning bullet ([`13f3241`](https://github.com/cagojeiger/cli-onprem/commit/13f32415a8642704bad7346d7ad8829921f420ba))
+
+### Feature
+
+* feat(docker-tar): support destination directory ([`5cdcb09`](https://github.com/cagojeiger/cli-onprem/commit/5cdcb09adc252a7b43ec7bc9021b24a631e6ac97))
+
+
 ## v0.10.0 (2025-05-24)
 
 ### Feature
