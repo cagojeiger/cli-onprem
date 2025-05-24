@@ -744,11 +744,19 @@ def presign(
                 if "Contents" in page:
                     for obj in page["Contents"]:
                         if not obj["Key"].endswith("/"):  # 디렉토리 제외
+                            relative_path = obj["Key"]
+                            if path_prefix and relative_path.startswith(path_prefix):
+                                relative_path = relative_path[len(path_prefix) :]
+
                             files.append(
                                 {
                                     "key": obj["Key"],
                                     "size": obj["Size"],
-                                    "filename": obj["Key"].split("/")[-1],
+                                    "filename": (
+                                        relative_path
+                                        if relative_path
+                                        else obj["Key"].split("/")[-1]
+                                    ),
                                 }
                             )
         except Exception as e:
@@ -766,14 +774,18 @@ def presign(
         )
 
         try:
-            s3_client.head_object(Bucket=s3_bucket, Key=path_prefix)
+            head_response = s3_client.head_object(Bucket=s3_bucket, Key=path_prefix)
+            content_length = head_response["ContentLength"]
+
+            relative_path = path_prefix
+            if s3_prefix and relative_path.startswith(s3_prefix):
+                relative_path = relative_path[len(s3_prefix) :]
+
             files = [
                 {
                     "key": path_prefix,
-                    "size": s3_client.head_object(Bucket=s3_bucket, Key=path_prefix)[
-                        "ContentLength"
-                    ],
-                    "filename": path_prefix.split("/")[-1],
+                    "size": content_length,
+                    "filename": relative_path,
                 }
             ]
         except Exception as e:
