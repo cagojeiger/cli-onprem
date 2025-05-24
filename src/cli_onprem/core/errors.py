@@ -16,6 +16,18 @@ class CLIError(Exception):
         self.exit_code = exit_code
 
 
+class CommandError(CLIError):
+    """명령 실행 중 발생하는 에러."""
+
+    pass
+
+
+class DependencyError(CLIError):
+    """의존성 관련 에러."""
+
+    pass
+
+
 def handle_error(error: Exception, exit_code: int = 1) -> None:
     """에러를 처리하고 적절한 메시지를 출력합니다.
 
