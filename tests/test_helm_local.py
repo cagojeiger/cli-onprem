@@ -222,7 +222,9 @@ def test_extract_images_command() -> None:
         with mock.patch(
             "cli_onprem.commands.helm_local.check_helm_cli_installed"
         ) as mock_check:
-            with mock.patch("cli_onprem.commands.helm_local.prepare_chart") as mock_prepare:
+            with mock.patch(
+                "cli_onprem.commands.helm_local.prepare_chart"
+            ) as mock_prepare:
                 with mock.patch(
                     "cli_onprem.commands.helm_local.helm_dependency_update"
                 ) as mock_dep:
@@ -251,7 +253,11 @@ def test_extract_images_command() -> None:
 
                             result = runner.invoke(
                                 app,
-                                ["helm-local", "extract-images", str(tmp_path / "chart.tgz")],
+                                [
+                                    "helm-local",
+                                    "extract-images",
+                                    str(tmp_path / "chart.tgz"),
+                                ],
                             )
 
                             assert result.exit_code == 0
