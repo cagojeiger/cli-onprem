@@ -49,9 +49,7 @@ def complete_profile(incomplete: str) -> List[str]:
         except Exception:
             return []  # 오류 발생 시 자동완성 제안 없음
 
-    from cli_onprem.libs.cache import get_cached_data
-
-    profiles = get_cached_data("profile_list", fetch_profiles, ttl=300)
+    profiles = fetch_profiles()
     return [p for p in profiles if p.startswith(incomplete)]
 
 
@@ -129,9 +127,7 @@ def complete_bucket(incomplete: str) -> List[str]:
             console.print(f"[yellow]버킷 자동완성 오류: {e}[/yellow]")
             return []
 
-    from cli_onprem.libs.cache import get_cached_data
-
-    buckets = get_cached_data("s3_buckets", fetch_buckets, ttl=600)
+    buckets = fetch_buckets()
     return [b for b in buckets if b.startswith(incomplete)]
 
 
@@ -215,13 +211,7 @@ def complete_prefix(incomplete: str, bucket: str = "") -> List[str]:
         except Exception:
             pass
 
-    cache_key = f"s3_prefixes_{bucket_name}_{current_path}"
-
-    from cli_onprem.libs.cache import get_cached_data
-
-    prefixes = get_cached_data(
-        cache_key, lambda: fetch_prefixes(bucket_name, current_path), ttl=600
-    )
+    prefixes = fetch_prefixes(bucket_name, current_path)
 
     return [p for p in prefixes if p.startswith(incomplete)]
 
