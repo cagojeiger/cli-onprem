@@ -425,6 +425,10 @@ def sync(
     profile: str = PROFILE_OPTION,
 ) -> None:
     """로컬 디렉터리와 S3 프리픽스 간 증분 동기화를 수행합니다."""
+    if src_path.exists() and src_path.is_dir() and not folder_name:
+        folder_name = src_path.name
+        console.print(f"[blue]폴더 이름 자동 지정: '{folder_name}'[/blue]")
+
     if folder_name:
         folder_path = src_path / folder_name
         if not folder_path.exists():
