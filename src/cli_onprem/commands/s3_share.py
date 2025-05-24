@@ -82,8 +82,79 @@ EXPIRES_OPTION = typer.Option(7, "--expires", help="URL 만료 시간(일) (기�
 OUTPUT_OPTION = typer.Option(
     None, "--output", help="CSV 저장 경로 (미지정 시 STDOUT으로 출력)"
 )
+
+
+def complete_folder(incomplete: str) -> List[str]:
+    """S3 폴더 자동완성: cli-onprem 프리픽스로 시작하는 폴더 제안"""
+
+    def fetch_folders(profile: str) -> List[str]:
+        try:
+            creds = get_profile_credentials(profile, check_bucket=False)
+            if not creds:
+                return []
+
+            s3_bucket = creds.get("bucket", "")
+            s3_prefix = creds.get("prefix", "")
+
+            if not s3_bucket:
+                return []
+
+            if s3_prefix and not s3_prefix.endswith("/"):
+                s3_prefix = f"{s3_prefix}/"
+
+            import boto3
+
+            s3_client = boto3.client(
+                "s3",
+                aws_access_key_id=creds["aws_access_key"],
+                aws_secret_access_key=creds["aws_secret_key"],
+                region_name=creds["region"],
+            )
+
+            s3_objects = []
+            paginator = s3_client.get_paginator("list_objects_v2")
+
+            for page in paginator.paginate(Bucket=s3_bucket, Prefix=s3_prefix):
+                if "Contents" in page:
+                    s3_objects.extend(page["Contents"])
+
+            available_folders = set()
+            for obj in s3_objects:
+                key = obj["Key"]
+                relative_key = (
+                    key[len(s3_prefix) :] if key.startswith(s3_prefix) else key
+                )
+
+                parts = relative_key.split("/")
+                if len(parts) > 1:
+                    folder = parts[0]
+                    if folder and folder.startswith("cli-onprem"):
+                        available_folders.add(folder)
+
+            return sorted(list(available_folders))
+        except Exception:
+            return []  # 오류 발생 시 자동완성 제안 없음
+
+    try:
+        credential_path = get_credential_path()
+        if credential_path.exists():
+            with open(credential_path) as f:
+                credentials = yaml.safe_load(f) or {}
+            if credentials:
+                profile = next(iter(credentials))
+                folders = fetch_folders(profile)
+                return [f for f in folders if f.startswith(incomplete)]
+    except Exception:
+        pass
+
+    return []
+
+
 SELECT_FOLDER_OPTION = typer.Option(
-    None, "--select-folder", help="선택할 폴더 이름 (미지정 시 폴더 목록에서 선택)"
+    ...,  # 필수 입력값으로 변경
+    "--select-folder",
+    help="선택할 폴더 이름 (cli-onprem으로 시작하는 폴더)",
+    autocompletion=complete_folder,
 )
 FOLDER_NAME_OPTION = typer.Option(
     None, "--folder-name", help="업로드할 폴더 이름 (미지정 시 기본 경로 사용)"
@@ -410,7 +481,7 @@ def calculate_file_md5(file_path: pathlib.Path) -> Optional[str]:
         return None
 
 
-SRC_PATH_ARGUMENT = typer.Argument(..., help="동기화할 로컬 폴더 경로")
+SRC_PATH_ARGUMENT = typer.Argument(..., help="동기화할 로컬 파일 또는 폴더 경로")
 
 
 @app.command()
@@ -424,15 +495,24 @@ def sync(
     folder_name: Optional[str] = FOLDER_NAME_OPTION,
     profile: str = PROFILE_OPTION,
 ) -> None:
-    """로컬 디렉터리와 S3 프리픽스 간 증분 동기화를 수행합니다."""
-    if not src_path.exists() or not src_path.is_dir():
+    """로컬 파일 또는 디렉터리와 S3 프리픽스 간 증분 동기화를 수행합니다."""
+    if not src_path.exists():
         console.print(
-            f"[bold red]오류: 소스 경로 '{src_path}'가 존재하지 않거나 "
-            f"디렉토리가 아닙니다.[/bold red]"
+            f"[bold red]오류: 소스 경로 '{src_path}'가 존재하지 않습니다.[/bold red]"
         )
         raise typer.Exit(code=1)
 
-    if not folder_name:
+    is_file = src_path.is_file()
+    is_dir = src_path.is_dir()
+
+    if not is_file and not is_dir:
+        console.print(
+            f"[bold red]오류: 소스 경로 '{src_path}'가 파일이나 디렉토리가 아닙니다."
+            f"[/bold red]"
+        )
+        raise typer.Exit(code=1)
+
+    if is_dir and not folder_name:
         folder_name = src_path.name
 
     creds = get_profile_credentials(profile, check_bucket=True)
@@ -498,16 +578,79 @@ def sync(
     skip_count = 0
     delete_count = 0
 
-    for local_path in src_path.glob("**/*"):
-        if local_path.is_file():
-            rel_path = local_path.relative_to(src_path)
+    if is_file:
+        local_path = src_path
+        file_name = src_path.name
+        s3_key = f"{s3_prefix}{file_name}"
+        local_files.add(s3_key)
 
-            if is_folder_upload:
-                s3_key = (
-                    f"{s3_prefix}{folder_prefix}{str(rel_path).replace(os.sep, '/')}"
+        if s3_key in s3_objects:
+            s3_obj = s3_objects[s3_key]
+            local_size = local_path.stat().st_size
+            local_mtime = local_path.stat().st_mtime
+
+            local_md5 = calculate_file_md5(local_path)
+
+            if local_md5 is not None and local_md5 == s3_obj["ETag"]:
+                skip_count += 1
+            elif local_md5 is None:
+                s3_mtime = s3_obj["LastModified"].timestamp()
+                if local_size == s3_obj["Size"] and local_mtime <= s3_mtime:
+                    skip_count += 1
+                else:
+                    try:
+                        with tqdm(
+                            total=local_path.stat().st_size,
+                            unit="B",
+                            unit_scale=True,
+                            desc=f"업로드: {file_name}",
+                        ) as pbar:
+                            s3_client.upload_file(
+                                str(local_path),
+                                s3_bucket,
+                                s3_key,
+                                Callback=lambda bytes_transferred: pbar.update(
+                                    bytes_transferred
+                                ),
+                            )
+                        upload_count += 1
+                    except Exception as e:
+                        console.print(
+                            f"[bold red]오류: '{file_name}' 업로드 실패: {e}[/bold red]"
+                        )
+        else:
+            try:
+                with tqdm(
+                    total=local_path.stat().st_size,
+                    unit="B",
+                    unit_scale=True,
+                    desc=f"업로드: {file_name}",
+                ) as pbar:
+                    s3_client.upload_file(
+                        str(local_path),
+                        s3_bucket,
+                        s3_key,
+                        Callback=lambda bytes_transferred: pbar.update(
+                            bytes_transferred
+                        ),
+                    )
+                upload_count += 1
+            except Exception as e:
+                console.print(
+                    f"[bold red]오류: '{file_name}' 업로드 실패: {e}[/bold red]"
                 )
-            else:
-                s3_key = f"{s3_prefix}{str(rel_path).replace(os.sep, '/')}"
+    else:
+        for local_path in src_path.glob("**/*"):
+            if local_path.is_file():
+                rel_path = local_path.relative_to(src_path)
+
+                if is_folder_upload:
+                    s3_key = (
+                        f"{s3_prefix}{folder_prefix}"
+                        f"{str(rel_path).replace(os.sep, '/')}"
+                    )
+                else:
+                    s3_key = f"{s3_prefix}{str(rel_path).replace(os.sep, '/')}"
 
             local_files.add(s3_key)
 
@@ -628,22 +771,19 @@ def presign(
             if folder and folder.startswith("cli-onprem"):
                 available_folders.add(folder)
 
-    sorted_folders = sorted(list(available_folders))
+    # sorted_folders = sorted(list(available_folders))
 
     selected_folder = select_folder
     filtered_objects = []
 
-    if not selected_folder and sorted_folders:
-        console.print("[blue]사용 가능한 폴더 목록:[/blue]")
-        for i, folder in enumerate(sorted_folders):
-            console.print(f"  {i + 1}. {folder}")
-
-        choice = Prompt.ask(
-            "선택할 폴더 번호를 입력하세요",
-            choices=[str(i + 1) for i in range(len(sorted_folders))],
-            default="1",
-        )
-        selected_folder = sorted_folders[int(choice) - 1]
+    if not selected_folder and not sys.stdin.isatty():
+        try:
+            piped_input = sys.stdin.read().strip()
+            if piped_input:
+                selected_folder = piped_input
+                console.print(f"[blue]파이프에서 폴더 읽음: '{selected_folder}'[/blue]")
+        except Exception:
+            pass
 
     if selected_folder:
         console.print(f"[blue]선택된 폴더: '{selected_folder}'[/blue]")

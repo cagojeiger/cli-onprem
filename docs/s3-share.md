@@ -1,10 +1,10 @@
 # S3 공유 명령어
 
-`s3-share` 명령어는 AWS S3 버킷에 접근하기 위한 자격증명을 관리하는 기능을 제공합니다.
+`s3-share` 명령어는 AWS S3 버킷에 접근하기 위한 자격증명을 관리하고, 파일 동기화 및 공유 URL 생성 기능을 제공합니다.
 
 ## 목적
 
-AWS S3 버킷에 접근하기 위한 자격증명을 안전하게 관리하고, 여러 프로파일을 통해 다양한 S3 버킷에 접근할 수 있도록 합니다.
+AWS S3 버킷에 접근하기 위한 자격증명을 안전하게 관리하고, 여러 프로파일을 통해 다양한 S3 버킷에 접근할 수 있도록 합니다. 또한 로컬 파일 또는 디렉토리를 S3에 업로드하고, 업로드된 객체에 대한 프리사인드 URL을 생성하여 공유할 수 있습니다.
 
 ## 사용법
 
@@ -174,3 +174,67 @@ cli-onprem s3-share init-bucket --prefix folder1/folder2/<Tab>
 ```
 
 > 참고: 프리픽스 자동완성은 폴더 구조를 단계별로 탐색할 수 있도록 구현되어 있습니다. 사용자가 경로를 입력할 때마다 현재 경로의 하위 폴더만 표시됩니다.
+
+## S3 객체 공유 명령어
+
+### sync
+
+로컬 파일이나 디렉터리와 S3 프리픽스 간 증분 동기화를 수행합니다.
+
+#### 옵션
+
+| 옵션 | 설명 |
+|------|------|
+| `--bucket TEXT` | 대상 S3 버킷 (미지정 시 프로파일의 bucket 사용) |
+| `--prefix TEXT` | 대상 프리픽스 (미지정 시 프로파일의 prefix 사용) |
+| `--folder-name TEXT` | 업로드할 폴더 이름 (미지정 시 소스 디렉토리 이름 사용) |
+| `--date-prefix/--no-date-prefix` | 날짜 기반 프리픽스 사용 여부 (기본: --date-prefix) |
+| `--delete/--no-delete` | 원본에 없는 객체 삭제 여부 (기본: --no-delete) |
+| `--parallel INT` | 동시 업로드 쓰레드 수 (기본: 8) |
+| `--profile TEXT` | 사용할 프로파일 이름 |
+
+#### 사용 예시
+
+```bash
+# 파일 업로드
+cli-onprem s3-share sync ./local_file.txt --profile staging
+# 결과: s3://{bucket}/{prefix}/cli-onprem-2023-05-23-local_file.txt
+
+# 디렉토리 업로드
+cli-onprem s3-share sync ./local_directory --profile staging
+# 결과: s3://{bucket}/{prefix}/cli-onprem-2023-05-23-local_directory/{파일1}, {파일2}, ...
+
+# 특정 폴더 이름으로 업로드
+cli-onprem s3-share sync ./local_directory --folder-name custom_name --profile staging
+# 결과: s3://{bucket}/{prefix}/cli-onprem-2023-05-23-custom_name/{파일1}, {파일2}, ...
+```
+
+### presign
+
+지정 프리픽스 하위 객체의 프리사인드 URL을 일괄 생성합니다.
+
+#### 옵션
+
+| 옵션 | 설명 |
+|------|------|
+| `--bucket TEXT` | 대상 S3 버킷 (미지정 시 프로파일의 bucket 사용) |
+| `--prefix TEXT` | 대상 프리픽스 (미지정 시 프로파일의 prefix 사용) |
+| `--select-folder TEXT` | 선택할 폴더 이름 (cli-onprem으로 시작하는 폴더, 자동완성 지원) |
+| `--expires INT` | URL 만료 시간(일) (기본: 7일) |
+| `--output FILE` | CSV 저장 경로 (미지정 시 STDOUT으로 출력) |
+| `--profile TEXT` | 사용할 프로파일 이름 |
+
+#### 사용 예시
+
+```bash
+# 폴더 선택하여 URL 생성
+cli-onprem s3-share presign --select-folder cli-onprem-2023-05-23-my_folder --profile staging
+
+# 파일 업로드 후 바로 URL 생성 (파이프 사용)
+cli-onprem s3-share sync ./local_directory | cli-onprem s3-share presign --output links.csv --profile staging
+
+# 출력 파일 지정
+cli-onprem s3-share presign --select-folder cli-onprem-2023-05-23-my_folder --output links.csv --profile staging
+```
+
+CSV 형식은 `filename,link,expire_at,size`로 출력됩니다.
