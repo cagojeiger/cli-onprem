@@ -1,4 +1,4 @@
-"""Tests for the helm command."""
+"""Tests for the helm-local command."""
 
 import pathlib
 import subprocess
@@ -8,7 +8,7 @@ from unittest import mock
 from typer.testing import CliRunner
 
 from cli_onprem.__main__ import app
-from cli_onprem.commands.helm import (
+from cli_onprem.commands.helm_local import (
     collect_images,
     extract_chart,
     helm_dependency_update,
@@ -167,7 +167,7 @@ def test_prepare_chart_with_archive() -> None:
         # Use a different approach to mock __str__
         mock_path.configure_mock(__str__=mock.MagicMock(return_value=str(chart_path)))
 
-        with mock.patch("cli_onprem.commands.helm.extract_chart") as mock_extract:
+        with mock.patch("cli_onprem.commands.helm_local.extract_chart") as mock_extract:
             mock_extract.return_value = tmp_path / "extracted_chart"
 
             result = prepare_chart(mock_path, tmp_path)
@@ -220,17 +220,17 @@ def test_extract_images_command() -> None:
         tmp_path = pathlib.Path(tmpdir)
 
         with mock.patch(
-            "cli_onprem.commands.helm.check_helm_cli_installed"
+            "cli_onprem.commands.helm_local.check_helm_cli_installed"
         ) as mock_check:
-            with mock.patch("cli_onprem.commands.helm.prepare_chart") as mock_prepare:
+            with mock.patch("cli_onprem.commands.helm_local.prepare_chart") as mock_prepare:
                 with mock.patch(
-                    "cli_onprem.commands.helm.helm_dependency_update"
+                    "cli_onprem.commands.helm_local.helm_dependency_update"
                 ) as mock_dep:
                     with mock.patch(
-                        "cli_onprem.commands.helm.helm_template"
+                        "cli_onprem.commands.helm_local.helm_template"
                     ) as mock_template:
                         with mock.patch(
-                            "cli_onprem.commands.helm.collect_images"
+                            "cli_onprem.commands.helm_local.collect_images"
                         ) as mock_collect:
                             mock_prepare.return_value = tmp_path / "chart"
                             mock_template.return_value = """
@@ -251,7 +251,7 @@ def test_extract_images_command() -> None:
 
                             result = runner.invoke(
                                 app,
-                                ["helm", "extract-images", str(tmp_path / "chart.tgz")],
+                                ["helm-local", "extract-images", str(tmp_path / "chart.tgz")],
                             )
 
                             assert result.exit_code == 0

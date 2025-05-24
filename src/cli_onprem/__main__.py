@@ -34,7 +34,7 @@ def get_command(import_path: str) -> typer.Typer:
 
 app.add_typer(get_command("cli_onprem.commands.docker_tar:app"), name="docker-tar")
 app.add_typer(get_command("cli_onprem.commands.fatpack:app"), name="fatpack")
-app.add_typer(get_command("cli_onprem.commands.helm:app"), name="helm")
+app.add_typer(get_command("cli_onprem.commands.helm_local:app"), name="helm-local")
 app.add_typer(get_command("cli_onprem.commands.s3_share:app"), name="s3-share")
 
 

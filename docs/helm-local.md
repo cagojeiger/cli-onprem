@@ -1,4 +1,4 @@
-# Helm 명령어
+# Helm Local 명령어
 
 Helm 차트에서 Docker 이미지 참조를 추출하는 명령어입니다.
 
@@ -10,16 +10,16 @@ Helm 차트(.tgz 아카이브 또는 디렉토리)에서 사용되는 모든 Doc
 
 ```bash
 # 기본 사용법
-cli-onprem helm extract-images <차트_경로>
+cli-onprem helm-local extract-images <차트_경로>
 
 # 추가 values 파일 지정
-cli-onprem helm extract-images <차트_경로> -f values-prod.yaml -f secrets.yaml
+cli-onprem helm-local extract-images <차트_경로> -f values-prod.yaml -f secrets.yaml
 
 # JSON 형식으로 출력
-cli-onprem helm extract-images <차트_경로> --json
+cli-onprem helm-local extract-images <차트_경로> --json
 
 # 로그 메시지 숨기기
-cli-onprem helm extract-images <차트_경로> --quiet
+cli-onprem helm-local extract-images <차트_경로> --quiet
 ```
 
 ## 옵션
@@ -37,7 +37,7 @@ cli-onprem helm extract-images <차트_경로> --quiet
 ### 압축된 차트에서 이미지 추출
 
 ```bash
-cli-onprem helm extract-images nginx-13.2.0.tgz
+cli-onprem helm-local extract-images nginx-13.2.0.tgz
 ```
 
 출력:
@@ -48,7 +48,7 @@ docker.io/library/nginx:1.25.4
 ### 추가 values 파일 사용
 
 ```bash
-cli-onprem helm extract-images wordpress-15.2.35.tgz -f prod-values.yaml -f secrets.yaml
+cli-onprem helm-local extract-images wordpress-15.2.35.tgz -f prod-values.yaml -f secrets.yaml
 ```
 
 출력:
@@ -60,7 +60,7 @@ docker.io/bitnami/mariadb:10.11.2
 ### JSON 형식으로 출력
 
 ```bash
-cli-onprem helm extract-images prometheus-22.6.1.tgz --json
+cli-onprem helm-local extract-images prometheus-22.6.1.tgz --json
 ```
 
 출력:
@@ -74,10 +74,10 @@ cli-onprem helm extract-images prometheus-22.6.1.tgz --json
 
 ```bash
 # 모든 이미지를 추출하여 tar 파일로 저장
-cli-onprem helm extract-images nginx-13.2.0.tgz | xargs -n1 cli-onprem docker-tar save -o /path/to/images/
+cli-onprem helm-local extract-images nginx-13.2.0.tgz | xargs -n1 cli-onprem docker-tar save -o /path/to/images/
 
 # 특정 values 파일을 적용하여 이미지 추출 후 저장
-cli-onprem helm extract-images wordpress-15.2.35.tgz -f prod-values.yaml | xargs -n1 cli-onprem docker-tar save -o /path/to/images/
+cli-onprem helm-local extract-images wordpress-15.2.35.tgz -f prod-values.yaml | xargs -n1 cli-onprem docker-tar save -o /path/to/images/
 ```
 
 이 방식으로 Helm 차트에서 사용되는 모든 이미지를 자동으로 추출하여 tar 파일로 저장할 수 있습니다.
