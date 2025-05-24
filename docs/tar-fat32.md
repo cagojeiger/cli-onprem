@@ -89,7 +89,7 @@ movie.iso.pack/
 │  └─ 0003.part
 ├─ manifest.sha256
 ├─ restore.sh
-└─ size.txt
+└─ <size>_MB
 ```
 
 #### 복원 과정
@@ -108,7 +108,7 @@ movie.iso.pack/
 │   └─ …
 ├─ manifest.sha256
 ├─ restore.sh
-└─ size.txt
+└─ <size>_MB
 
 movie.iso          ← 상위 디렉터리에 원본이 생성되었음
 ```
