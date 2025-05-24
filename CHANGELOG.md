@@ -2,6 +2,37 @@
 
 
 
+## v0.9.0 (2025-05-24)
+
+### Chore
+
+* chore: apply pre-commit ([`3292453`](https://github.com/cagojeiger/cli-onprem/commit/3292453154a59c551537d4420cacbbde2fc4c1dd))
+
+* chore: update uv.lock file ([`7ae9a57`](https://github.com/cagojeiger/cli-onprem/commit/7ae9a57248d2c643a6aaa7c9dcf0e07f16426d49))
+
+### Feature
+
+* feat: rename helm command to helm-local ([`d599469`](https://github.com/cagojeiger/cli-onprem/commit/d599469b47dadf487a9af10f1f154f96bd30b843))
+
+### Refactor
+
+* refactor: remove unused cache module ([`4796eae`](https://github.com/cagojeiger/cli-onprem/commit/4796eae545e4cbc6e444406d1fcec788d541f38d))
+
+### Unknown
+
+* Include depth information in output filenames and fix linting issues
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`a65239c`](https://github.com/cagojeiger/cli-onprem/commit/a65239cfb0139d469aef5633a6bf7f720470a769))
+
+* Fix file detection logic to properly handle files with extensions
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`2494e79`](https://github.com/cagojeiger/cli-onprem/commit/2494e794a9a4fa2dab22d5b965cfd9947ca0f118))
+
+* Replace --select-folder with --select-path option to handle both files and folders
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`40bd8dd`](https://github.com/cagojeiger/cli-onprem/commit/40bd8dd767a74f0ba62837c9da0c0fa24b491e3c))
+
+
 ## v0.8.0 (2025-05-24)
 
 ### Chore
