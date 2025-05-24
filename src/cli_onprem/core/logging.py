@@ -30,7 +30,7 @@ def get_logger(name: str) -> logging.Logger:
 
 def init_logging(level: str = "INFO") -> None:
     """로깅 시스템을 초기화합니다.
-    
+
     Args:
         level: 기본 로그 레벨
     """
