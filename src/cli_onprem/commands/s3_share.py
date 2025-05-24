@@ -425,27 +425,16 @@ def sync(
     profile: str = PROFILE_OPTION,
 ) -> None:
     """로컬 디렉터리와 S3 프리픽스 간 증분 동기화를 수행합니다."""
-    if src_path.exists() and src_path.is_dir() and not folder_name:
-        folder_name = src_path.name
-        console.print(f"[blue]폴더 이름 자동 지정: '{folder_name}'[/blue]")
-
-    if folder_name:
-        folder_path = src_path / folder_name
-        if not folder_path.exists():
-            try:
-                folder_path.mkdir(parents=True, exist_ok=True)
-                console.print(f"[blue]폴더 생성됨: '{folder_name}'[/blue]")
-            except Exception as e:
-                console.print(f"[bold red]오류: 폴더 생성 실패: {e}[/bold red]")
-                raise typer.Exit(code=1) from e
-        src_path = folder_path
-
     if not src_path.exists() or not src_path.is_dir():
         console.print(
             f"[bold red]오류: 소스 경로 '{src_path}'가 존재하지 않거나 "
             f"디렉토리가 아닙니다.[/bold red]"
         )
         raise typer.Exit(code=1)
+
+    if not folder_name:
+        folder_name = src_path.name
+        console.print(f"[blue]폴더 이름 자동 지정: '{folder_name}'[/blue]")
 
     creds = get_profile_credentials(profile, check_bucket=True)
 
