@@ -104,7 +104,7 @@ def extract_images(
     """
     # 로깅 초기화
     init_logging()
-    
+
     if quiet:
         set_log_level("ERROR")
 
