@@ -2,6 +2,27 @@
 
 
 
+## v0.7.0 (2025-05-24)
+
+### Chore
+
+* chore: 패키지 버전 업데이트 (0.6.0 -> 0.6.1)
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`61cdf01`](https://github.com/cagojeiger/cli-onprem/commit/61cdf0116212b350bd0d678bcd5b0932becc9b3e))
+
+### Feature
+
+* feat: 이미지 아키텍처 검증 및 재다운로드 로직 추가
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`6ea6401`](https://github.com/cagojeiger/cli-onprem/commit/6ea6401d8722d226e491633d74889cb3163c827b))
+
+### Refactor
+
+* refactor: 이미지 풀 로직 단순화 - 항상 지정된 아키텍처로 이미지 다운로드
+
+Co-Authored-By: 강희용 <cagojeiger@naver.com> ([`304d123`](https://github.com/cagojeiger/cli-onprem/commit/304d123ed1b55d73243e14e6d07594f597b5c7bf))
+
+
 ## v0.6.1 (2025-05-23)
 
 ### Chore
