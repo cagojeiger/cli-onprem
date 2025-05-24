@@ -1,11 +1,15 @@
 """Docker 관련 비즈니스 로직."""
 
-from typing import Any, List, Optional
+import subprocess
+import time
+from typing import Any, List, Optional, Tuple
 
 import yaml
 
+from cli_onprem.core.errors import CommandError, DependencyError
 from cli_onprem.core.logging import get_logger
 from cli_onprem.core.types import ImageSet
+from cli_onprem.utils.shell import check_command_exists
 
 logger = get_logger("services.docker")
 
@@ -175,3 +179,214 @@ def _add_repo_tag_digest(
         images.add(f"{repo}@{digest}")
     else:
         images.add(repo)
+
+
+def check_docker_installed() -> None:
+    """Docker CLI가 설치되어 있는지 확인합니다.
+
+    Raises:
+        DependencyError: Docker CLI가 설치되어 있지 않은 경우
+    """
+    if not check_command_exists("docker"):
+        raise DependencyError(
+            "Docker CLI가 설치되어 있지 않습니다. "
+            "설치 방법: https://docs.docker.com/engine/install/"
+        )
+
+
+def parse_image_reference(reference: str) -> Tuple[str, str, str, str]:
+    """Docker 이미지 레퍼런스를 분해합니다.
+
+    형식: [<registry>/][<namespace>/]<image>[:<tag>]
+    누락 시 기본값:
+    - registry: docker.io
+    - namespace: library
+    - tag: latest
+
+    Args:
+        reference: Docker 이미지 레퍼런스
+
+    Returns:
+        (registry, namespace, image, tag) 튜플
+    """
+    registry = "docker.io"
+    namespace = "library"
+    image = ""
+    tag = "latest"
+
+    if ":" in reference:
+        ref_parts = reference.split(":")
+        tag = ref_parts[-1]
+        reference = ":".join(ref_parts[:-1])
+
+    parts = reference.split("/")
+
+    if len(parts) == 1:
+        image = parts[0]
+    elif len(parts) == 2:
+        if "." in parts[0] or ":" in parts[0]:  # 레지스트리로 판단
+            registry = parts[0]
+            image = parts[1]
+        else:  # 네임스페이스/이미지로 판단
+            namespace = parts[0]
+            image = parts[1]
+    elif len(parts) >= 3:
+        registry = parts[0]
+        namespace = parts[1]
+        image = "/".join(parts[2:])
+
+    return registry, namespace, image, tag
+
+
+def generate_tar_filename(
+    registry: str, namespace: str, image: str, tag: str, arch: str
+) -> str:
+    """이미지 정보를 기반으로 tar 파일명을 생성합니다.
+
+    형식: [reg__][ns__]image__tag__arch.tar
+
+    Args:
+        registry: 레지스트리 (예: docker.io)
+        namespace: 네임스페이스 (예: library)
+        image: 이미지 이름
+        tag: 태그
+        arch: 아키텍처
+
+    Returns:
+        생성된 파일명
+    """
+    registry = registry.replace("/", "_")
+    namespace = namespace.replace("/", "_")
+    image = image.replace("/", "_")
+    tag = tag.replace("/", "_")
+    arch = arch.replace("/", "_")
+
+    parts = []
+
+    if registry != "docker.io":
+        parts.append(f"{registry}__")
+
+    if namespace != "library":
+        parts.append(f"{namespace}__")
+
+    parts.append(f"{image}__{tag}__{arch}.tar")
+
+    return "".join(parts)
+
+
+def check_image_exists(reference: str) -> bool:
+    """이미지가 로컬에 존재하는지 확인합니다.
+
+    Args:
+        reference: Docker 이미지 레퍼런스
+
+    Returns:
+        이미지 존재 여부
+    """
+    cmd = ["docker", "inspect", "--type=image", reference]
+    try:
+        subprocess.run(
+            cmd,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
+def pull_image(reference: str, arch: str = "linux/amd64", max_retries: int = 3) -> None:
+    """이미지를 Docker Hub에서 가져옵니다.
+
+    Args:
+        reference: Docker 이미지 레퍼런스
+        arch: 타겟 아키텍처
+        max_retries: 최대 재시도 횟수
+
+    Raises:
+        CommandError: 이미지 pull 실패
+    """
+    logger.info(f"이미지 {reference} 다운로드 중 (아키텍처: {arch})")
+    cmd = ["docker", "pull", "--platform", arch, reference]
+
+    retry_count = 0
+    last_error = ""
+
+    while retry_count <= max_retries:
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            logger.info(f"이미지 {reference} 다운로드 완료")
+            return
+        except subprocess.CalledProcessError as e:
+            last_error = e.stderr
+            if "timeout" in last_error.lower() and retry_count < max_retries:
+                retry_count += 1
+                wait_time = 2**retry_count  # 지수 백오프 (2, 4, 8초)
+                logger.warning(
+                    f"이미지 다운로드 타임아웃, {retry_count}/{max_retries} "
+                    f"재시도 중 ({wait_time}초 대기)..."
+                )
+                time.sleep(wait_time)
+            else:
+                break
+
+    raise CommandError(f"이미지 다운로드 실패: {last_error}")
+
+
+def save_image(reference: str, output_path: str) -> None:
+    """Docker 이미지를 tar 파일로 저장합니다.
+
+    Args:
+        reference: Docker 이미지 레퍼런스
+        output_path: 출력 파일 경로
+
+    Raises:
+        CommandError: 이미지 저장 실패
+    """
+    logger.info(f"이미지 {reference}를 {output_path}로 저장 중")
+    cmd = ["docker", "save", "-o", output_path, reference]
+
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        logger.info(f"이미지 저장 완료: {output_path}")
+    except subprocess.CalledProcessError as e:
+        raise CommandError(f"이미지 저장 실패: {e.stderr}") from e
+
+
+def save_image_to_stdout(reference: str) -> None:
+    """Docker 이미지를 표준 출력으로 내보냅니다.
+
+    Args:
+        reference: Docker 이미지 레퍼런스
+
+    Raises:
+        CommandError: 이미지 저장 실패
+    """
+    cmd = ["docker", "save", reference]
+
+    try:
+        subprocess.run(cmd, check=True, stderr=subprocess.PIPE, text=True)
+    except subprocess.CalledProcessError as e:
+        raise CommandError(f"이미지 저장 실패: {e.stderr}") from e
+
+
+def list_local_images() -> List[str]:
+    """로컬에 있는 Docker 이미지 목록을 반환합니다.
+
+    Returns:
+        이미지 레퍼런스 목록
+
+    Raises:
+        CommandError: 이미지 목록 조회 실패
+    """
+    try:
+        result = subprocess.run(
+            ["docker", "images", "--format", "{{.Repository}}:{{.Tag}}"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.splitlines()
+    except subprocess.CalledProcessError as e:
+        raise CommandError(f"이미지 목록 조회 실패: {e.stderr}") from e

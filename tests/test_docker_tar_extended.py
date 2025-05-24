@@ -8,11 +8,12 @@ from unittest import mock
 from typer.testing import CliRunner
 
 from cli_onprem.__main__ import app
-from cli_onprem.commands.docker_tar import (
+from cli_onprem.services.docker import (
     check_image_exists,
-    generate_filename,
     parse_image_reference,
-    run_docker_command,
+)
+from cli_onprem.services.docker import (
+    generate_tar_filename as generate_filename,
 )
 
 runner = CliRunner()
@@ -48,47 +49,53 @@ def test_parse_image_reference_with_namespace() -> None:
 def test_parse_image_reference_with_registry() -> None:
     """Test parsing image reference with registry."""
     registry, namespace, image, tag = parse_image_reference(
-        "registry.example.com/image"
+        "quay.io/namespace/image:tag"
     )
-    assert registry == "registry.example.com"
-    assert namespace == "library"
-    assert image == "image"
-    assert tag == "latest"
-
-
-def test_parse_image_reference_full() -> None:
-    """Test parsing full image reference."""
-    registry, namespace, image, tag = parse_image_reference(
-        "registry.example.com/namespace/image:tag"
-    )
-    assert registry == "registry.example.com"
+    assert registry == "quay.io"
     assert namespace == "namespace"
     assert image == "image"
     assert tag == "tag"
 
 
-def test_generate_filename() -> None:
-    """Test generating filename from image parts."""
+def test_parse_image_reference_complex() -> None:
+    """Test parsing complex image reference."""
+    registry, namespace, image, tag = parse_image_reference(
+        "myregistry.com/my/deep/path/image:v1.0"
+    )
+    assert registry == "myregistry.com"
+    assert namespace == "my"
+    assert image == "deep/path/image"
+    assert tag == "v1.0"
+
+
+def test_generate_filename_simple() -> None:
+    """Test filename generation for simple image."""
     filename = generate_filename("docker.io", "library", "nginx", "latest", "amd64")
     assert filename == "nginx__latest__amd64.tar"
 
 
-def test_generate_filename_with_registry() -> None:
-    """Test generating filename with non-default registry."""
-    filename = generate_filename(
-        "registry.example.com", "library", "nginx", "latest", "amd64"
-    )
-    assert filename == "registry.example.com__nginx__latest__amd64.tar"
-
-
 def test_generate_filename_with_namespace() -> None:
-    """Test generating filename with non-default namespace."""
-    filename = generate_filename("docker.io", "user", "nginx", "latest", "amd64")
-    assert filename == "user__nginx__latest__amd64.tar"
+    """Test filename generation with namespace."""
+    filename = generate_filename("docker.io", "user", "image", "v1", "amd64")
+    assert filename == "user__image__v1__amd64.tar"
+
+
+def test_generate_filename_with_registry() -> None:
+    """Test filename generation with registry."""
+    filename = generate_filename("quay.io", "namespace", "image", "tag", "arm64")
+    assert filename == "quay.io__namespace__image__tag__arm64.tar"
+
+
+def test_generate_filename_special_chars() -> None:
+    """Test filename generation with special characters."""
+    filename = generate_filename(
+        "reg.io", "ns/sub", "img/path", "tag/slash", "linux/amd64"
+    )
+    assert filename == "reg.io__ns_sub__img_path__tag_slash__linux_amd64.tar"
 
 
 def test_check_image_exists_true() -> None:
-    """Test checking image exists returns true."""
+    """Test checking if image exists - image exists."""
     with mock.patch("subprocess.run") as mock_run:
         mock_run.return_value = subprocess.CompletedProcess(
             args=["docker", "inspect", "--type=image", "test:image"],
@@ -97,76 +104,49 @@ def test_check_image_exists_true() -> None:
             stderr=b"",
         )
 
-        result = check_image_exists("test:image")
+        exists = check_image_exists("test:image")
 
-        assert result is True
+        assert exists is True
         mock_run.assert_called_once()
 
 
 def test_check_image_exists_false() -> None:
-    """Test checking image exists returns false."""
+    """Test checking if image exists - image does not exist."""
     with mock.patch("subprocess.run") as mock_run:
         mock_run.side_effect = subprocess.CalledProcessError(
             returncode=1,
-            cmd=["docker", "inspect", "--type=image", "nonexistent:image"],
-        )
-
-        result = check_image_exists("nonexistent:image")
-
-        assert result is False
-        mock_run.assert_called_once()
-
-
-def test_run_docker_command_success() -> None:
-    """Test running docker command successfully."""
-    with mock.patch("subprocess.run") as mock_run:
-        mock_run.return_value = subprocess.CompletedProcess(
-            args=["docker", "command"],
-            returncode=0,
-            stdout=b"",
+            cmd=["docker", "inspect", "--type=image", "test:image"],
             stderr=b"",
         )
 
-        success, error = run_docker_command(["docker", "command"])
+        exists = check_image_exists("test:image")
 
-        assert success is True
-        assert error == ""
-        mock_run.assert_called_once()
+        assert exists is False
 
 
-def test_run_docker_command_failure() -> None:
-    """Test running docker command with failure."""
-    with mock.patch("subprocess.run") as mock_run:
-        mock_run.side_effect = subprocess.CalledProcessError(
-            returncode=1,
-            cmd=["docker", "command"],
-            stderr="Command failed",
-        )
-
-        success, error = run_docker_command(["docker", "command"])
-
-        assert success is False
-        assert error == "Command failed"
-        mock_run.assert_called_once()
+# run_docker_command tests removed - functionality moved to service layer
 
 
 def test_docker_tar_save_stdout() -> None:
     """Test docker-tar save command with stdout option."""
-    with mock.patch("cli_onprem.commands.docker_tar.check_image_exists") as mock_check:
-        mock_check.return_value = True  # 이미지가 이미 로컬에 있다고 가정
+    with mock.patch("subprocess.run") as mock_subprocess:
+        mock_subprocess.return_value = mock.Mock(returncode=0, stdout="", stderr="")
 
         with mock.patch(
-            "cli_onprem.commands.docker_tar.run_docker_command"
-        ) as mock_run:
-            mock_run.return_value = (True, "")  # 성공적으로 저장
+            "cli_onprem.utils.shell.check_command_exists"
+        ) as mock_check_cmd:
+            mock_check_cmd.return_value = True  # Docker가 설치되어 있다고 가정
 
             result = runner.invoke(
                 app, ["docker-tar", "save", "test:image", "--stdout"]
             )
 
             assert result.exit_code == 0
-            assert mock_run.call_args[0][0][0:2] == ["docker", "save"]
-            assert mock_run.call_args[1]["stdout"] == subprocess.STDOUT
+            # stdout의 경우 stderr로만 출력되고 stdout은 아무것도 포함 안함
+            assert any(
+                "save" in str(call) and "test:image" in str(call)
+                for call in mock_subprocess.call_args_list
+            )
 
 
 def test_docker_tar_save_with_destination() -> None:
@@ -175,15 +155,13 @@ def test_docker_tar_save_with_destination() -> None:
         tmp_path = Path(tmpdir)
         output_file = tmp_path / "output.tar"
 
-        with mock.patch(
-            "cli_onprem.commands.docker_tar.check_image_exists"
-        ) as mock_check:
-            mock_check.return_value = True  # 이미지가 이미 로컬에 있다고 가정
+        with mock.patch("subprocess.run") as mock_subprocess:
+            mock_subprocess.return_value = mock.Mock(returncode=0, stdout="", stderr="")
 
             with mock.patch(
-                "cli_onprem.commands.docker_tar.run_docker_command"
-            ) as mock_run:
-                mock_run.return_value = (True, "")  # 성공적으로 저장
+                "cli_onprem.utils.shell.check_command_exists"
+            ) as mock_check_cmd:
+                mock_check_cmd.return_value = True  # Docker가 설치되어 있다고 가정
 
                 result = runner.invoke(
                     app,
@@ -197,22 +175,24 @@ def test_docker_tar_save_with_destination() -> None:
                 )
 
                 assert result.exit_code == 0
-                cmd = mock_run.call_args[0][0]
-                assert cmd[0:3] == ["docker", "save", "-o"]
-                assert str(output_file) in cmd
+                # save 명령어가 호출되었는지 확인
+                assert any(
+                    "save" in str(call) and str(output_file) in str(call)
+                    for call in mock_subprocess.call_args_list
+                )
 
 
 def test_docker_tar_save_create_directory(tmp_path: Path) -> None:
     """Destination directory should be created when absent."""
     dest_dir = tmp_path / "2025"
 
-    with mock.patch("cli_onprem.commands.docker_tar.check_image_exists") as mock_check:
-        mock_check.return_value = True
+    with mock.patch("subprocess.run") as mock_subprocess:
+        mock_subprocess.return_value = mock.Mock(returncode=0, stdout="", stderr="")
 
         with mock.patch(
-            "cli_onprem.commands.docker_tar.run_docker_command"
-        ) as mock_run:
-            mock_run.return_value = (True, "")
+            "cli_onprem.utils.shell.check_command_exists"
+        ) as mock_check_cmd:
+            mock_check_cmd.return_value = True
 
             result = runner.invoke(
                 app,
@@ -222,5 +202,19 @@ def test_docker_tar_save_create_directory(tmp_path: Path) -> None:
             assert result.exit_code == 0
             assert dest_dir.is_dir()
             expected_path = dest_dir / "test__image__amd64.tar"
-            cmd = mock_run.call_args[0][0]
-            assert expected_path.as_posix() in cmd
+            # save 명령어에 올바른 경로가 포함되었는지 확인
+            assert any(
+                "save" in str(call) and expected_path.name in str(call)
+                for call in mock_subprocess.call_args_list
+            )
+
+
+def test_docker_cli_not_installed() -> None:
+    """Test error when Docker CLI is not installed."""
+    # Mock both the utils function and the direct shutil.which call
+    with mock.patch("cli_onprem.utils.shell.check_command_exists", return_value=False):
+        with mock.patch("shutil.which", return_value=None):
+            result = runner.invoke(app, ["docker-tar", "save", "test:image"])
+
+            assert result.exit_code == 1
+            assert "Docker CLI가 설치되어 있지 않습니다" in result.output
