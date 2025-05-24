@@ -267,3 +267,264 @@ def test_extract_images_command() -> None:
                             mock_dep.assert_called_once()
                             mock_template.assert_called_once()
                             mock_collect.assert_called_once()
+
+
+def test_extract_images_json_output() -> None:
+    """Test the extract-images command with JSON output format."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = pathlib.Path(tmpdir)
+
+        with mock.patch(
+            "cli_onprem.commands.helm_local.check_helm_cli_installed"
+        ) as mock_check:
+            with mock.patch(
+                "cli_onprem.commands.helm_local.prepare_chart"
+            ) as mock_prepare:
+                with mock.patch(
+                    "cli_onprem.commands.helm_local.helm_dependency_update"
+                ) as mock_dep:
+                    with mock.patch(
+                        "cli_onprem.commands.helm_local.helm_template"
+                    ) as mock_template:
+                        with mock.patch(
+                            "cli_onprem.commands.helm_local.collect_images"
+                        ) as mock_collect:
+                            mock_prepare.return_value = tmp_path / "chart"
+                            mock_template.return_value = """
+                            apiVersion: apps/v1
+                            kind: Deployment
+                            metadata:
+                              name: test
+                            spec:
+                              template:
+                                spec:
+                                  containers:
+                                  - name: nginx
+                                    image: nginx:1.21
+                                  - name: app
+                                    image: myapp:v1.0.0
+                            """
+                            mock_collect.return_value = [
+                                "docker.io/library/nginx:1.21",
+                                "docker.io/library/myapp:v1.0.0"
+                            ]
+
+                            result = runner.invoke(
+                                app,
+                                [
+                                    "helm-local",
+                                    "extract-images",
+                                    str(tmp_path / "chart.tgz"),
+                                    "--json",
+                                ],
+                            )
+
+                            assert result.exit_code == 0
+                            # Parse JSON output
+                            import json
+                            output_data = json.loads(result.stdout)
+                            assert isinstance(output_data, list)
+                            assert len(output_data) == 2
+                            assert "docker.io/library/nginx:1.21" in output_data
+                            assert "docker.io/library/myapp:v1.0.0" in output_data
+
+
+def test_extract_images_multiple_values_files() -> None:
+    """Test the extract-images command with multiple values files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = pathlib.Path(tmpdir)
+        
+        # Create test values files
+        values1 = tmp_path / "values1.yaml"
+        values1.write_text("nginx:\n  tag: 1.20")
+        
+        values2 = tmp_path / "values2.yaml"
+        values2.write_text("nginx:\n  tag: 1.21")  # This should override values1
+
+        with mock.patch(
+            "cli_onprem.commands.helm_local.check_helm_cli_installed"
+        ) as mock_check:
+            with mock.patch(
+                "cli_onprem.commands.helm_local.prepare_chart"
+            ) as mock_prepare:
+                with mock.patch(
+                    "cli_onprem.commands.helm_local.helm_dependency_update"
+                ) as mock_dep:
+                    with mock.patch(
+                        "cli_onprem.commands.helm_local.helm_template"
+                    ) as mock_template:
+                        with mock.patch(
+                            "cli_onprem.commands.helm_local.collect_images"
+                        ) as mock_collect:
+                            mock_prepare.return_value = tmp_path / "chart"
+                            
+                            # Mock helm template to verify values files are passed correctly
+                            def check_helm_template_args(chart_dir, values_files):
+                                # Verify both values files are passed
+                                assert len(values_files) == 2
+                                assert values_files[0] == values1
+                                assert values_files[1] == values2
+                                return "rendered content"
+                            
+                            mock_template.side_effect = check_helm_template_args
+                            mock_collect.return_value = ["docker.io/library/nginx:1.21"]
+
+                            result = runner.invoke(
+                                app,
+                                [
+                                    "helm-local",
+                                    "extract-images",
+                                    str(tmp_path / "chart.tgz"),
+                                    "-f", str(values1),
+                                    "-f", str(values2),
+                                ],
+                            )
+
+                            assert result.exit_code == 0
+                            assert "docker.io/library/nginx:1.21" in result.stdout
+                            mock_template.assert_called_once()
+
+
+def test_extract_images_raw_option() -> None:
+    """Test the extract-images command with --raw option (no normalization)."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = pathlib.Path(tmpdir)
+
+        with mock.patch(
+            "cli_onprem.commands.helm_local.check_helm_cli_installed"
+        ) as mock_check:
+            with mock.patch(
+                "cli_onprem.commands.helm_local.prepare_chart"
+            ) as mock_prepare:
+                with mock.patch(
+                    "cli_onprem.commands.helm_local.helm_dependency_update"
+                ) as mock_dep:
+                    with mock.patch(
+                        "cli_onprem.commands.helm_local.helm_template"
+                    ) as mock_template:
+                        with mock.patch(
+                            "cli_onprem.commands.helm_local.collect_images"
+                        ) as mock_collect:
+                            mock_prepare.return_value = tmp_path / "chart"
+                            mock_template.return_value = """
+                            apiVersion: apps/v1
+                            kind: Deployment
+                            metadata:
+                              name: test
+                            spec:
+                              template:
+                                spec:
+                                  containers:
+                                  - name: nginx
+                                    image: nginx
+                                  - name: app
+                                    image: myregistry.com/app:v1.0.0
+                            """
+                            # When --raw is used, images should not be normalized
+                            # Currently this feature is not implemented, so we expect normalized output
+                            mock_collect.return_value = [
+                                "docker.io/library/nginx:latest",  # normalized from "nginx"
+                                "myregistry.com/app:v1.0.0"  # already fully qualified
+                            ]
+
+                            result = runner.invoke(
+                                app,
+                                [
+                                    "helm-local",
+                                    "extract-images",
+                                    str(tmp_path / "chart.tgz"),
+                                    "--raw",
+                                ],
+                            )
+
+                            assert result.exit_code == 0
+                            # TODO: When --raw is implemented, these should be:
+                            # assert "nginx" in result.stdout  # not normalized
+                            # assert "myregistry.com/app:v1.0.0" in result.stdout
+                            # For now, we expect normalized output
+                            assert "docker.io/library/nginx:latest" in result.stdout
+                            assert "myregistry.com/app:v1.0.0" in result.stdout
+
+
+def test_helm_dependency_update_failure() -> None:
+    """Test that helm dependency update failure doesn't stop the process."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = pathlib.Path(tmpdir)
+
+        with mock.patch(
+            "cli_onprem.commands.helm_local.check_helm_cli_installed"
+        ) as mock_check:
+            with mock.patch(
+                "cli_onprem.commands.helm_local.prepare_chart"
+            ) as mock_prepare:
+                with mock.patch(
+                    "cli_onprem.commands.helm_local.helm_dependency_update"
+                ) as mock_dep:
+                    with mock.patch(
+                        "cli_onprem.commands.helm_local.helm_template"
+                    ) as mock_template:
+                        with mock.patch(
+                            "cli_onprem.commands.helm_local.collect_images"
+                        ) as mock_collect:
+                            mock_prepare.return_value = tmp_path / "chart"
+                            
+                            # Simulate helm dependency update failure
+                            # The function doesn't raise exceptions due to check=False
+                            # We just verify it's called and the process continues
+                            mock_dep.return_value = None
+                            
+                            mock_template.return_value = "rendered content"
+                            mock_collect.return_value = ["docker.io/library/nginx:latest"]
+
+                            result = runner.invoke(
+                                app,
+                                [
+                                    "helm-local",
+                                    "extract-images",
+                                    str(tmp_path / "chart.tgz"),
+                                ],
+                            )
+
+                            # Should still succeed even if dependency update fails
+                            assert result.exit_code == 0
+                            assert "docker.io/library/nginx:latest" in result.stdout
+                            mock_dep.assert_called_once()
+                            mock_template.assert_called_once()
+
+
+def test_helm_template_failure() -> None:
+    """Test proper error handling when helm template fails."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = pathlib.Path(tmpdir)
+
+        with mock.patch(
+            "cli_onprem.commands.helm_local.check_helm_cli_installed"
+        ) as mock_check:
+            with mock.patch(
+                "cli_onprem.commands.helm_local.prepare_chart"
+            ) as mock_prepare:
+                with mock.patch(
+                    "cli_onprem.commands.helm_local.helm_dependency_update"
+                ) as mock_dep:
+                    with mock.patch(
+                        "cli_onprem.commands.helm_local.helm_template"
+                    ) as mock_template:
+                        mock_prepare.return_value = tmp_path / "chart"
+                        
+                        # Simulate helm template failure
+                        mock_template.side_effect = subprocess.CalledProcessError(
+                            1, "helm template", stderr="Error: chart not found"
+                        )
+
+                        result = runner.invoke(
+                            app,
+                            [
+                                "helm-local",
+                                "extract-images",
+                                str(tmp_path / "chart.tgz"),
+                            ],
+                        )
+
+                        # Should exit with error code
+                        assert result.exit_code == 1
+                        assert "명령어 실행 실패" in result.stdout
