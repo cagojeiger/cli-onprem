@@ -618,10 +618,10 @@ def sync(
             print(f"{src_path.name}:{final_s3_path}")
 
 
-def complete_cli_onprem_folders(incomplete: str) -> List[str]:
-    """cli-onprem 프리픽스 폴더 자동완성"""
+def complete_cli_onprem_paths(incomplete: str) -> List[str]:
+    """cli-onprem 프리픽스 파일 및 폴더 자동완성"""
 
-    def fetch_folders() -> List[str]:
+    def fetch_paths() -> List[str]:
         try:
             credential_path = get_credential_path()
             if not credential_path.exists():
@@ -653,29 +653,37 @@ def complete_cli_onprem_folders(incomplete: str) -> List[str]:
                 Bucket=bucket, Delimiter="/", Prefix=f"{prefix}cli-onprem-"
             )
 
-            folders = []
+            paths = []
+
             if "CommonPrefixes" in response:
                 for common_prefix in response["CommonPrefixes"]:
                     folder_path = common_prefix["Prefix"]
                     folder_name = folder_path.rstrip("/").split("/")[-1]
                     if folder_name.startswith("cli-onprem-"):
-                        folders.append(folder_name)
+                        paths.append(folder_name)
 
-            return folders
+            if "Contents" in response:
+                for obj in response["Contents"]:
+                    if not obj["Key"].endswith("/"):  # 디렉토리 제외
+                        file_name = obj["Key"].split("/")[-1]
+                        if file_name.startswith("cli-onprem-"):
+                            paths.append(file_name)
+
+            return paths
         except Exception:
             return []
 
-    folders = fetch_folders()
-    return [f for f in folders if f.startswith(incomplete)]
+    paths = fetch_paths()
+    return [p for p in paths if p.startswith(incomplete)]
 
 
 @app.command()
 def presign(
-    select_folder: str = typer.Option(
+    select_path: str = typer.Option(
         ...,
-        "--select-folder",
-        help="presign URL을 생성할 cli-onprem 폴더 선택",
-        autocompletion=complete_cli_onprem_folders,
+        "--select-path",
+        help="presign URL을 생성할 cli-onprem 폴더 또는 파일 선택",
+        autocompletion=complete_cli_onprem_paths,
     ),
     output: Optional[str] = typer.Option(None, "--output", help="CSV 출력 파일 경로"),
     profile: str = PROFILE_OPTION,
@@ -683,15 +691,15 @@ def presign(
         3600, "--expiry", help="URL 만료 시간(초), 기본값: 3600(1시간)"
     ),
 ) -> None:
-    """선택한 폴더의 파일들에 대한 presigned URL을 생성합니다."""
-    folder_from_pipe = None
+    """선택한 폴더의 파일들 또는 개별 파일에 대한 presigned URL을 생성합니다."""
+    path_from_pipe = None
     if not sys.stdin.isatty():
         pipe_input = sys.stdin.read().strip()
         if pipe_input:
             parts = pipe_input.split(":", 1)
             if len(parts) == 2:
-                folder_name, s3_path = parts
-                folder_from_pipe = s3_path
+                path_name, s3_path = parts
+                path_from_pipe = s3_path
 
     creds = get_profile_credentials(profile, check_bucket=True)
 
@@ -705,16 +713,12 @@ def presign(
     if s3_prefix and not s3_prefix.endswith("/"):
         s3_prefix = f"{s3_prefix}/"
 
-    folder_prefix = (
-        folder_from_pipe if folder_from_pipe else f"{s3_prefix}{select_folder}"
-    )
+    path_prefix = path_from_pipe if path_from_pipe else f"{s3_prefix}{select_path}"
 
-    if not folder_prefix.endswith("/"):
-        folder_prefix = f"{folder_prefix}/"
+    is_folder = path_prefix.endswith("/") or "/" not in select_path.split("-")[-1]
 
-    console.print(
-        f"[bold blue]폴더 '{folder_prefix}'의 presigned URL 생성 중...[/bold blue]"
-    )
+    if is_folder and not path_prefix.endswith("/"):
+        path_prefix = f"{path_prefix}/"
 
     s3_client = boto3.client(
         "s3",
@@ -724,29 +728,55 @@ def presign(
     )
 
     files = []
-    paginator = s3_client.get_paginator("list_objects_v2")
 
-    try:
-        for page in paginator.paginate(Bucket=s3_bucket, Prefix=folder_prefix):
-            if "Contents" in page:
-                for obj in page["Contents"]:
-                    if not obj["Key"].endswith("/"):  # 디렉토리 제외
-                        files.append(
-                            {
-                                "key": obj["Key"],
-                                "size": obj["Size"],
-                                "filename": obj["Key"].split("/")[-1],
-                            }
-                        )
-    except Exception as e:
-        console.print(f"[bold red]오류: S3 객체 목록 가져오기 실패: {e}[/bold red]")
-        raise typer.Exit(code=1) from e
-
-    if not files:
+    if is_folder:
         console.print(
-            f"[yellow]경고: 폴더 '{folder_prefix}'에 파일이 없습니다.[/yellow]"
+            f"[bold blue]폴더 '{path_prefix}'의 presigned URL 생성 중...[/bold blue]"
         )
-        raise typer.Exit(code=0)
+
+        paginator = s3_client.get_paginator("list_objects_v2")
+
+        try:
+            for page in paginator.paginate(Bucket=s3_bucket, Prefix=path_prefix):
+                if "Contents" in page:
+                    for obj in page["Contents"]:
+                        if not obj["Key"].endswith("/"):  # 디렉토리 제외
+                            files.append(
+                                {
+                                    "key": obj["Key"],
+                                    "size": obj["Size"],
+                                    "filename": obj["Key"].split("/")[-1],
+                                }
+                            )
+        except Exception as e:
+            console.print(f"[bold red]오류: S3 객체 목록 가져오기 실패: {e}[/bold red]")
+            raise typer.Exit(code=1) from e
+
+        if not files:
+            console.print(
+                f"[yellow]경고: 폴더 '{path_prefix}'에 파일이 없습니다.[/yellow]"
+            )
+            raise typer.Exit(code=0)
+    else:
+        console.print(
+            f"[bold blue]파일 '{path_prefix}'의 presigned URL 생성 중...[/bold blue]"
+        )
+
+        try:
+            s3_client.head_object(Bucket=s3_bucket, Key=path_prefix)
+            files = [
+                {
+                    "key": path_prefix,
+                    "size": s3_client.head_object(Bucket=s3_bucket, Key=path_prefix)[
+                        "ContentLength"
+                    ],
+                    "filename": path_prefix.split("/")[-1],
+                }
+            ]
+        except Exception as e:
+            error_msg = f"오류: 파일 '{path_prefix}'을 찾을 수 없습니다: {e}"
+            console.print(f"[bold red]{error_msg}[/bold red]")
+            raise typer.Exit(code=1) from e
 
     csv_data = []
     expire_time = datetime.datetime.now() + timedelta(seconds=expiry)
