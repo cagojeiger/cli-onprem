@@ -1,6 +1,6 @@
 """Docker 관련 비즈니스 로직."""
 
-from typing import Any, List, Optional, Set
+from typing import Any, List, Optional
 
 import yaml
 
@@ -84,9 +84,7 @@ def normalize_image_name(image: str) -> str:
     return normalized
 
 
-def extract_images_from_yaml(
-    yaml_content: str, normalize: bool = True
-) -> List[str]:
+def extract_images_from_yaml(yaml_content: str, normalize: bool = True) -> List[str]:
     """YAML 문서에서 이미지 참조를 파싱하고 정렬된 목록을 반환합니다.
 
     Args:
