@@ -455,14 +455,18 @@ def sync(
     if s3_prefix and not s3_prefix.endswith("/"):
         s3_prefix = f"{s3_prefix}/"
 
+    date_prefix_str = ""
     if date_prefix:
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         date_prefix_str = f"cli-onprem-{today}-"
         s3_prefix = f"{s3_prefix}{date_prefix_str}"
         console.print(f"[blue]날짜 기반 프리픽스 적용: {date_prefix_str}[/blue]")
 
+    is_folder_upload = False
+    folder_prefix = ""
     if folder_name:
-        s3_prefix = f"{s3_prefix}{folder_name}/"
+        is_folder_upload = True
+        folder_prefix = f"{folder_name}/"
         console.print(f"[blue]폴더 지정됨: '{folder_name}'[/blue]")
 
     import boto3
@@ -502,7 +506,14 @@ def sync(
     for local_path in src_path.glob("**/*"):
         if local_path.is_file():
             rel_path = local_path.relative_to(src_path)
-            s3_key = f"{s3_prefix}{str(rel_path).replace(os.sep, '/')}"
+
+            if is_folder_upload:
+                s3_key = (
+                    f"{s3_prefix}{folder_prefix}{str(rel_path).replace(os.sep, '/')}"
+                )
+            else:
+                s3_key = f"{s3_prefix}{str(rel_path).replace(os.sep, '/')}"
+
             local_files.add(s3_key)
 
             if s3_key in s3_objects:
