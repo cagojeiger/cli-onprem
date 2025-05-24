@@ -1,15 +1,15 @@
-# FatPack 명령어
+# Tar-Fat32 명령어
 
-`fatpack` 명령어는 파일 또는 디렉터리를 압축하고 지정된 크기의 조각으로 분할하여 나중에 쉽게 복원할 수 있는 기능을 제공합니다.
+`tar-fat32` 명령어는 파일 또는 디렉터리를 압축하고 지정된 크기의 조각으로 분할하여 나중에 쉽게 복원할 수 있는 기능을 제공합니다.
 
 ## 사용법
 
 ```bash
 # 압축 및 분할
-cli-onprem fatpack pack <경로> [--chunk-size <크기>]
+cli-onprem tar-fat32 pack <경로> [--chunk-size <크기>]
 
 # 복원
-cli-onprem fatpack restore <경로.pack> [--purge]
+cli-onprem tar-fat32 restore <경로.pack> [--purge]
 # 또는
 <경로.pack>/restore.sh [--purge]
 ```
@@ -50,21 +50,21 @@ cli-onprem fatpack restore <경로.pack> [--purge]
 
 ```bash
 # 기본 압축 (3GB 조각 크기)
-cli-onprem fatpack pack 대용량_영상.mkv
+cli-onprem tar-fat32 pack 대용량_영상.mkv
 # 출력: 대용량_영상.mkv.pack/ 디렉터리 생성
 
 # 조각 크기 지정
-cli-onprem fatpack pack 데이터_폴더 -c 500M
+cli-onprem tar-fat32 pack 데이터_폴더 -c 500M
 # 출력: 데이터_폴더.pack/ 디렉터리 생성
 
 # 복원 (중간 파일만 정리)
-cli-onprem fatpack restore 대용량_영상.mkv.pack
+cli-onprem tar-fat32 restore 대용량_영상.mkv.pack
 # 또는
 cd 대용량_영상.mkv.pack && ./restore.sh
 # 출력: 대용량_영상.mkv가 상위 디렉터리에 복원됨, .pack 디렉터리는 남아있음
 
 # 복원 후 완전 정리
-cli-onprem fatpack restore 대용량_영상.mkv.pack --purge
+cli-onprem tar-fat32 restore 대용량_영상.mkv.pack --purge
 # 또는
 cd 대용량_영상.mkv.pack && ./restore.sh --purge
 # 출력: 대용량_영상.mkv가 상위 디렉터리에 복원됨, .pack 디렉터리는 삭제됨
@@ -75,7 +75,7 @@ cd 대용량_영상.mkv.pack && ./restore.sh --purge
 #### 3GB 조각으로 분할
 
 ```bash
-fatpack pack movie.iso -c 3G
+tar-fat32 pack movie.iso -c 3G
 ```
 
 분할 후 구조:
