@@ -434,7 +434,6 @@ def sync(
 
     if not folder_name:
         folder_name = src_path.name
-        console.print(f"[blue]폴더 이름 자동 지정: '{folder_name}'[/blue]")
 
     creds = get_profile_credentials(profile, check_bucket=True)
 
@@ -453,20 +452,23 @@ def sync(
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         date_prefix_str = f"cli-onprem-{today}-"
         s3_prefix = f"{s3_prefix}{date_prefix_str}"
-        console.print(f"[blue]날짜 기반 프리픽스 적용: {date_prefix_str}[/blue]")
 
     is_folder_upload = False
     folder_prefix = ""
     if folder_name:
         is_folder_upload = True
         folder_prefix = f"{folder_name}/"
-        console.print(f"[blue]폴더 지정됨: '{folder_name}'[/blue]")
 
     import boto3
 
-    console.print(
-        f"[bold blue]S3 동기화: {src_path} → s3://{s3_bucket}/{s3_prefix}[/bold blue]"
-    )
+    if is_folder_upload:
+        s3_path = f"s3://{s3_bucket}/{s3_prefix}{folder_name}/"
+        console.print(f"[bold blue]폴더 '{folder_name}' 동기화:[/bold blue]")
+        console.print(f"[blue]→ {s3_path}[/blue]")
+    else:
+        s3_path = f"s3://{s3_bucket}/{s3_prefix}"
+        console.print("[bold blue]파일 동기화:[/bold blue]")
+        console.print(f"[blue]→ {s3_path}[/blue]")
 
     s3_client = boto3.client(
         "s3",
