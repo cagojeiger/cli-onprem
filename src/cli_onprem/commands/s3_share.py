@@ -1,8 +1,14 @@
-"""CLI-ONPREM을 위한 S3 공유 관련 명령어."""
+"""CLI-ONPREM을 위한 S3 공유 관련 명령어.
+
+이 모듈은 하이브리드 접근법을 사용합니다:
+- sync 명령: AWS CLI 직접 사용 (더 안정적이고 기능이 풍부함)
+- presign, init-* 명령: boto3 사용 (복잡한 로직과 자동완성 기능 때문)
+"""
 
 import csv
 import datetime
 import io
+import subprocess
 import sys
 from datetime import timedelta
 from pathlib import Path
@@ -11,7 +17,6 @@ from typing import List, Optional
 import typer
 from rich.console import Console
 from rich.prompt import Confirm, Prompt
-from tqdm import tqdm
 from typing_extensions import Annotated
 
 from cli_onprem.core.errors import CLIError
@@ -30,8 +35,6 @@ from cli_onprem.services.s3 import (
     head_object,
     list_buckets,
     list_objects,
-    sync_to_s3,
-    upload_file,
 )
 
 context_settings = {
@@ -254,8 +257,11 @@ def init_bucket(
         raise typer.Exit(code=1) from e
 
 
-@app.command()
+@app.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True}
+)
 def sync(
+    ctx: typer.Context,
     src_path: Annotated[Path, typer.Argument(help="동기화할 로컬 파일 또는 폴더 경로")],
     bucket: Optional[str] = BUCKET_OPTION,
     prefix: Optional[str] = PREFIX_OPTION,
@@ -263,7 +269,15 @@ def sync(
     parallel: int = PARALLEL_OPTION,
     profile: str = PROFILE_OPTION,
 ) -> None:
-    """로컬 파일/디렉터리와 S3 프리픽스 간 증분 동기화를 수행합니다."""
+    """로컬 파일/디렉터리와 S3 프리픽스 간 증분 동기화를 수행합니다.
+
+    AWS CLI의 s3 sync 명령을 사용하여 더 안정적인 동기화를 제공합니다.
+    추가 옵션은 -- 뒤에 전달할 수 있습니다.
+
+    예시:
+        cli-onprem s3-share sync mydir -- --size-only
+        cli-onprem s3-share sync myfile.pack -- --exclude "*.tmp"
+    """
     init_logging()
 
     if not src_path.exists():
@@ -273,6 +287,16 @@ def sync(
         raise typer.Exit(code=1)
 
     try:
+        # AWS CLI 설치 확인
+        from cli_onprem.utils.shell import check_command_exists, run_command
+
+        if not check_command_exists("aws"):
+            console.print(
+                "[bold red]오류: AWS CLI가 설치되어 있지 않습니다.\n"
+                "설치: https://aws.amazon.com/cli/[/bold red]"
+            )
+            raise typer.Exit(code=1)
+
         creds = get_profile_credentials(profile, check_bucket=True)
 
         s3_bucket = bucket or creds.get("bucket", "")
@@ -286,64 +310,39 @@ def sync(
             s3_prefix = f"{s3_prefix}/"
 
         final_s3_path = generate_s3_path(src_path, s3_prefix)
+        s3_uri = f"s3://{s3_bucket}/{final_s3_path}"
 
-        if src_path.is_dir():
-            console.print(
-                f"[bold blue]폴더 '{src_path.name}'를 S3 경로 "
-                f"s3://{s3_bucket}/{final_s3_path}에 동기화합니다[/bold blue]"
-            )
-        else:
-            console.print(
-                f"[bold blue]파일 '{src_path.name}'를 S3 경로 "
-                f"s3://{s3_bucket}/{final_s3_path}에 동기화합니다[/bold blue]"
-            )
+        # AWS CLI 명령 구성
+        cmd = ["aws", "s3", "sync", str(src_path), s3_uri, "--region", creds["region"]]
 
-        s3_client = create_s3_client(
-            creds["aws_access_key"], creds["aws_secret_key"], creds["region"]
-        )
+        if delete:
+            cmd.append("--delete")
 
-        # 진행률 표시를 위한 콜백
-        def upload_with_progress(local_path: Path, s3_key: str, size: int) -> None:
-            rel_path = (
-                local_path.relative_to(src_path)
-                if src_path.is_dir()
-                else local_path.name
-            )
-            with tqdm(
-                total=size,
-                unit="B",
-                unit_scale=True,
-                desc=f"업로드: {rel_path}",
-            ) as pbar:
-                upload_file(
-                    s3_client,
-                    local_path,
-                    s3_bucket,
-                    s3_key,
-                    callback=lambda bytes_transferred: (
-                        pbar.update(bytes_transferred),
-                        None,
-                    )[1],
-                )
+        # 추가 인자 처리 (-- 뒤의 모든 인자)
+        if ctx.args:
+            cmd.extend(ctx.args)
 
-        upload_count, skip_count, delete_count = sync_to_s3(
-            s3_client,
-            src_path,
-            s3_bucket,
-            final_s3_path,
-            delete=delete,
-            upload_callback=upload_with_progress,
-        )
+        console.print(f"[bold blue]'{src_path}' → '{s3_uri}' 동기화 중...[/bold blue]")
 
-        console.print(
-            f"[bold green]동기화 완료: {upload_count} 업로드, {skip_count} 스킵, "
-            f"{delete_count} 삭제되었음.[/bold green]"
-        )
+        # 환경 변수 설정 (AWS 자격증명)
+        import os
+
+        env = os.environ.copy()
+        env["AWS_ACCESS_KEY_ID"] = creds["aws_access_key"]
+        env["AWS_SECRET_ACCESS_KEY"] = creds["aws_secret_key"]
+
+        # AWS CLI 실행
+        run_command(cmd, env=env)
+
+        console.print("[bold green]동기화 완료[/bold green]")
 
         # 파이프 출력용
         if not sys.stdout.isatty():
             print(f"{src_path.name}:{final_s3_path}")
 
+    except subprocess.CalledProcessError as e:
+        console.print(f"[bold red]AWS CLI 오류: {e}[/bold red]")
+        raise typer.Exit(code=1) from e
     except CLIError as e:
         console.print(f"[bold red]오류: {e}[/bold red]")
         raise typer.Exit(code=1) from e

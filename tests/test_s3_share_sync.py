@@ -87,33 +87,34 @@ def test_sync_command_success(tmp_path: pathlib.Path) -> None:
     with mock.patch("pathlib.Path.home", return_value=home_dir):
         with mock.patch("pathlib.Path.exists", return_value=True):
             with mock.patch("pathlib.Path.is_dir", return_value=True):
-                with mock.patch("pathlib.Path.glob") as mock_glob:
-                    mock_glob.return_value = [test_file1, test_file2]
+                # Mock AWS CLI 존재 확인
+                with mock.patch(
+                    "cli_onprem.utils.shell.check_command_exists", return_value=True
+                ):
+                    # Mock AWS CLI 실행
+                    with mock.patch("cli_onprem.utils.shell.run_command") as mock_run:
+                        # AWS CLI 실행이 성공했다고 가정
+                        mock_run.return_value = mock.MagicMock(returncode=0)
 
-                    with mock.patch("boto3.client") as mock_client:
-                        mock_s3 = mock.MagicMock()
-                        mock_client.return_value = mock_s3
+                        result = runner.invoke(
+                            app,
+                            [
+                                "s3-share",
+                                "sync",
+                                str(src_dir),
+                                "--profile",
+                                "test_profile",
+                            ],
+                        )
 
-                        mock_paginator = mock.MagicMock()
-                        mock_s3.get_paginator.return_value = mock_paginator
+                        assert result.exit_code == 0
+                        assert "동기화 완료" in result.stdout
 
-                        mock_paginator.paginate.return_value = [{}]
-
-                        with mock.patch(
-                            "cli_onprem.utils.hash.calculate_file_md5",
-                            side_effect=["hash1", "hash2"],
-                        ):
-                            result = runner.invoke(
-                                app,
-                                [
-                                    "s3-share",
-                                    "sync",
-                                    str(src_dir),
-                                    "--profile",
-                                    "test_profile",
-                                ],
-                            )
-
-                            assert result.exit_code == 0
-                            assert "동기화 완료:" in result.stdout
-                            assert mock_s3.upload_file.call_count == 2
+                        # AWS CLI가 올바른 인자로 호출되었는지 확인
+                        mock_run.assert_called_once()
+                        call_args = mock_run.call_args[0][0]
+                        assert call_args[0] == "aws"
+                        assert call_args[1] == "s3"
+                        assert call_args[2] == "sync"
+                        assert str(src_dir) in call_args[3]
+                        assert "s3://test-bucket/test-prefix/" in call_args[4]
