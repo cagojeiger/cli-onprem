@@ -2,6 +2,26 @@
 
 
 
+## v0.12.0 (2025-05-25)
+
+### Feature
+
+* feat: use AWS CLI for s3-share sync command instead of boto3
+
+Replace boto3-based sync implementation with AWS CLI to provide more stable
+and feature-rich synchronization. This allows users to leverage all AWS CLI
+sync options like --size-only, --exclude, etc.
+
+- Modified sync command to execute AWS CLI directly
+- Updated tests to mock AWS CLI execution instead of boto3
+- Maintained hybrid approach: sync uses AWS CLI, other commands use boto3
+- Added support for passing additional AWS CLI options via -- separator
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`b661173`](https://github.com/cagojeiger/cli-onprem/commit/b661173d6d9f5f41315b7aa0e89b05d01aeff1b6))
+
+
 ## v0.11.3 (2025-05-25)
 
 ### Chore
