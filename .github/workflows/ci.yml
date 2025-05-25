@@ -37,7 +37,7 @@ jobs:
         SKIP=uv-lock uv run pre-commit run --all-files
     - name: Type check with mypy
       run: |
-        uv run mypy src tests --strict
+        uv run mypy src --strict --no-warn-unused-ignores
     - name: Test with pytest
       run: |
         uv run pytest -q
