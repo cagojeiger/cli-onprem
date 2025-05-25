@@ -79,10 +79,10 @@ Commands → Services → Utils
 ### Utils 레이어 (`utils/`)
 어디서든 사용할 수 있는 순수 유틸리티 함수:
 - **shell.py**: `run_command()`, `check_command_exists()`
-- **file.py**: `safe_write()`, `ensure_dir()`, `read_yaml()`
-- **formatting.py**: `format_json()`, `format_table()`, `format_csv()`
-- **fs.py**: `get_file_size()`, `resolve_path()`, `list_files()`
-- **hash.py**: `calculate_md5()`, `calculate_sha256()`, `verify_checksum()`
+- **file.py**: `ensure_dir()`, `read_yaml()`, `write_yaml()`, `extract_tar()`
+- **formatting.py**: `format_json()`, `format_list()`
+- **fs.py**: `find_completable_paths()`, `find_pack_directories()`, `create_size_marker()`, `generate_restore_script()`, `make_executable()`
+- **hash.py**: `calculate_file_md5()`, `calculate_file_sha256()`, `verify_file_md5()`, `verify_file_sha256()`
 
 ### Services 레이어 (`services/`)
 관심사별로 구성된 도메인 특화 비즈니스 로직:
@@ -90,11 +90,15 @@ Commands → Services → Utils
 #### docker.py
 ```python
 - check_docker_installed() -> None
-- pull_image(reference: str, platform: str = None) -> None
-- save_image(reference: str, output_path: Path) -> None
-- parse_image_reference(reference: str) -> ImageReference
 - normalize_image_name(image: str) -> str
 - extract_images_from_yaml(yaml_content: str, normalize: bool = True) -> list[str]
+- parse_image_reference(reference: str) -> tuple[str, str, str, str]
+- generate_tar_filename(image: str, tag: str, arch: str, extension: str = "tar") -> str
+- check_image_exists(reference: str) -> bool
+- pull_image(reference: str, arch: str = "linux/amd64", max_retries: int = 3) -> None
+- save_image(reference: str, output_path: str) -> None
+- save_image_to_stdout(reference: str) -> None
+- list_local_images() -> list[str]
 ```
 
 #### helm.py
@@ -103,25 +107,32 @@ Commands → Services → Utils
 - extract_chart(archive_path: Path, dest_dir: Path) -> Path
 - prepare_chart(chart_path: Path, workdir: Path) -> Path
 - update_dependencies(chart_dir: Path) -> None
-- render_template(chart_path: Path, values_files: list[Path] = None) -> str
+- render_template(chart_path: Path, values_files: list[Path] = None, include_crds: bool = True) -> str
 ```
 
 #### s3.py
 ```python
-- create_client(profile: dict) -> boto3.client
-- sync_files(client, local_path: Path, bucket: str, prefix: str, **options) -> None
-- generate_presigned_url(client, bucket: str, key: str, expires_in: int) -> str
-- calculate_md5(file_path: Path) -> str
-- list_objects(client, bucket: str, prefix: str) -> list[dict]
+- create_s3_client(aws_access_key: str, aws_secret_key: str, region: str) -> Any
+- list_buckets(s3_client: Any) -> list[str]
+- list_objects(s3_client: Any, bucket: str, prefix: str = "", max_keys: int = 1000) -> list[dict]
+- upload_file(s3_client: Any, file_path: Path, bucket: str, key: str, callback: Any = None) -> None
+- delete_objects(s3_client: Any, bucket: str, keys: list[str]) -> dict[str, Any]
+- generate_presigned_url(s3_client: Any, bucket: str, key: str, expires_in: int = 3600) -> str
+- head_object(s3_client: Any, bucket: str, key: str) -> dict[str, Any]
+- sync_to_s3(s3_client: Any, local_path: Path, bucket: str, prefix: str = "", exclude_patterns: list[str] = None, force: bool = False) -> None
+- generate_s3_path(src_path: Path, s3_prefix: str) -> str
 ```
 
 #### archive.py
 ```python
-- compress_path(path: Path, output: Path) -> None
-- split_file(file_path: Path, chunk_size: str, output_dir: Path) -> list[Path]
-- create_manifest(parts: list[Path], output_path: Path) -> None
-- verify_integrity(manifest_path: Path) -> bool
-- generate_restore_script(purge: bool = False) -> str
+- create_tar_archive(input_path: Path, output_path: Path, parent_dir: Path) -> None
+- split_file(file_path: Path, part_size: str, output_dir: Path = None, max_parts: int = 999) -> list[Path]
+- calculate_sha256_manifest(pack_dir: Path, glob_pattern: str = "*") -> list[tuple[str, str]]
+- write_manifest_file(manifest: list[tuple[str, str]], output_path: Path) -> None
+- verify_manifest(manifest_path: Path) -> None
+- merge_files(parts_dir: Path, output_path: Path, pattern: str = "*") -> None
+- extract_tar_archive(archive_path: Path, extract_to: Path, strip_components: int = 0) -> None
+- get_directory_size_mb(path: Path) -> int
 ```
 
 #### credential.py
