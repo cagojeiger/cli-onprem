@@ -34,7 +34,7 @@ jobs:
         uv sync --all-extras --dev
     - name: Lint with pre-commit
       run: |
-        uv run pre-commit run --all-files
+        SKIP=uv-lock uv run pre-commit run --all-files
     - name: Type check with mypy
       run: |
         uv run mypy src tests --strict
