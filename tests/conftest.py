@@ -94,7 +94,7 @@ def mock_s3_error_client() -> Generator[mock.MagicMock, None, None]:
     Yields:
         에러를 발생시키는 모킹된 S3 클라이언트
     """
-    from botocore.exceptions import ClientError  # type: ignore[import-untyped]
+    from botocore.exceptions import ClientError
 
     with mock.patch("boto3.client") as mock_boto3_client:
         mock_client = mock.MagicMock()
