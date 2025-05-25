@@ -1,5 +1,6 @@
 """S3 공유 명령어 에러 케이스 테스트."""
 
+import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -7,7 +8,6 @@ from unittest import mock
 
 from botocore.exceptions import (
     ClientError,
-    ConnectionError,
 )
 from typer.testing import CliRunner
 
@@ -23,28 +23,25 @@ def test_upload_network_error(mock_home_dir: Path, mock_credentials: Path) -> No
         test_file = Path(f.name)
 
     try:
-        with mock.patch("boto3.client") as mock_client:
-            mock_s3 = mock.MagicMock()
-            mock_client.return_value = mock_s3
+        # AWS CLI 존재 확인 모킹
+        with mock.patch(
+            "cli_onprem.utils.shell.check_command_exists", return_value=True
+        ):
+            # AWS CLI 실행이 네트워크 에러로 실패
+            with mock.patch("cli_onprem.utils.shell.run_command") as mock_run:
+                # CalledProcessError 발생
+                mock_run.side_effect = subprocess.CalledProcessError(
+                    1, ["aws", "s3", "sync"], stderr="Unable to connect"
+                )
 
-            # Paginator 설정 (sync는 먼저 list를 함)
-            mock_paginator = mock.MagicMock()
-            mock_s3.get_paginator.return_value = mock_paginator
-            mock_paginator.paginate.return_value = []
+                result = runner.invoke(
+                    app,
+                    ["s3-share", "sync", str(test_file), "--profile", "default"],
+                )
 
-            # ConnectionError 발생
-            mock_s3.upload_file.side_effect = ConnectionError(
-                error=Exception("Unable to connect")
-            )
-
-            result = runner.invoke(
-                app,
-                ["s3-share", "sync", str(test_file), "--profile", "default"],
-            )
-
-            # ConnectionError는 처리되지 않은 예외로 발생
-            assert result.exception is not None
-            assert isinstance(result.exception, ConnectionError)
+                # AWS CLI 에러로 인한 종료
+                assert result.exit_code == 1
+                assert "AWS CLI 오류" in result.stdout
     finally:
         test_file.unlink()
 
