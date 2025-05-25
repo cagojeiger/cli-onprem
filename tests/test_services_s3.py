@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-from botocore.exceptions import ClientError  # type: ignore[import-untyped]
+from botocore.exceptions import ClientError
 
 from cli_onprem.core.errors import CLIError
 from cli_onprem.services.s3 import (

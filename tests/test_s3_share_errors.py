@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from botocore.exceptions import (  # type: ignore[import-untyped]
+from botocore.exceptions import (
     ClientError,
     ConnectionError,
 )
