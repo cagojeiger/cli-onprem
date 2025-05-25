@@ -37,7 +37,7 @@ jobs:
 
       # 4. 의존성 설치
       - name: Install dependencies
-        run: uv sync --locked --all-extras --dev
+        run: uv sync --all-extras --dev
 
       # 5. semantic-release version 단계
       - name: Python Semantic Release Version
