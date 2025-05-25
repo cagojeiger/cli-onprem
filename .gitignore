@@ -38,8 +38,11 @@ venv.bak/
 
 # Testing
 .coverage
+.coverage.*
 htmlcov/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .tox/
 .nox/
 
@@ -68,3 +71,8 @@ wheels/
 
 # Misc
 .DS_Store
+
+# Test artifacts
+*.pack/
+test.txt.pack/
+testfile.txt.pack/

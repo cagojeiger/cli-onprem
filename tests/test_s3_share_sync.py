@@ -7,7 +7,7 @@ import yaml
 from typer.testing import CliRunner
 
 from cli_onprem.__main__ import app
-from cli_onprem.commands.s3_share import calculate_file_md5
+from cli_onprem.utils.hash import calculate_file_md5
 
 runner = CliRunner()
 
@@ -100,7 +100,7 @@ def test_sync_command_success(tmp_path: pathlib.Path) -> None:
                         mock_paginator.paginate.return_value = [{}]
 
                         with mock.patch(
-                            "cli_onprem.commands.s3_share.calculate_file_md5",
+                            "cli_onprem.utils.hash.calculate_file_md5",
                             side_effect=["hash1", "hash2"],
                         ):
                             result = runner.invoke(
