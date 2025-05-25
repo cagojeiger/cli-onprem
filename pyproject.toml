@@ -74,9 +74,7 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 disallow_untyped_decorators = false
 
-[[tool.mypy.overrides]]
-module = "botocore.*"
-ignore_missing_imports = true
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -9,7 +9,7 @@ import pytest
 import yaml
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def mock_home_dir() -> Generator[Path, None, None]:
     """홈 디렉터리를 모킹하는 픽스처.
 
@@ -24,7 +24,7 @@ def mock_home_dir() -> Generator[Path, None, None]:
             yield home_dir
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def mock_credentials(mock_home_dir: Path) -> Generator[Path, None, None]:
     """자격증명 파일을 생성하는 픽스처.
 
@@ -57,7 +57,7 @@ def mock_credentials(mock_home_dir: Path) -> Generator[Path, None, None]:
     yield credential_path
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def mock_s3_client() -> Generator[mock.MagicMock, None, None]:
     """S3 클라이언트를 모킹하는 픽스처.
 
@@ -87,14 +87,14 @@ def mock_s3_client() -> Generator[mock.MagicMock, None, None]:
         yield mock_client
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def mock_s3_error_client() -> Generator[mock.MagicMock, None, None]:
     """에러를 발생시키는 S3 클라이언트를 모킹하는 픽스처.
 
     Yields:
         에러를 발생시키는 모킹된 S3 클라이언트
     """
-    from botocore.exceptions import ClientError
+    from botocore.exceptions import ClientError  # type: ignore[import-untyped]
 
     with mock.patch("boto3.client") as mock_boto3_client:
         mock_client = mock.MagicMock()
