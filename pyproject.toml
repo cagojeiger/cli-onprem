@@ -39,6 +39,7 @@ dev = [
     "black",
     "mypy",
     "pytest",
+    "pytest-cov",
     "pytest-mypy-plugins",
     "pyupgrade",
     "build",
