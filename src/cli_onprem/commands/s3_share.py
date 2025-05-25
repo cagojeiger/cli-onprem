@@ -320,7 +320,7 @@ def sync(
                     local_path,
                     s3_bucket,
                     s3_key,
-                    callback=lambda bytes_transferred: pbar.update(bytes_transferred),
+                    callback=lambda bytes_transferred: (pbar.update(bytes_transferred), None)[1],
                 )
 
         upload_count, skip_count, delete_count = sync_to_s3(
