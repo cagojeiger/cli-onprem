@@ -10,7 +10,6 @@ CLI-ONPREM은 함수형 프로그래밍 접근 방식을 따르며 명확한 관
 src/cli_onprem/
 ├── core/                      # 핵심 프레임워크 기능
 │   ├── __init__.py
-│   ├── cli.py                # CLI 헬퍼 함수
 │   ├── errors.py             # 에러 처리 함수 및 타입
 │   ├── logging.py            # 로깅 설정
 │   └── types.py              # 공통 타입 정의
@@ -20,14 +19,16 @@ src/cli_onprem/
 │   ├── shell.py              # 셸 명령 실행
 │   ├── file.py               # 파일 작업
 │   ├── formatting.py         # 출력 포맷팅
-│   └── validation.py         # 입력 검증
+│   ├── fs.py                 # 파일시스템 작업
+│   └── hash.py               # 해시 계산 (MD5, SHA256)
 │
 ├── services/                  # 도메인별 비즈니스 로직
 │   ├── __init__.py
 │   ├── docker.py             # Docker 관련 함수
 │   ├── helm.py               # Helm 관련 함수
 │   ├── s3.py                 # AWS S3 작업
-│   └── archive.py            # 압축 및 분할 함수
+│   ├── archive.py            # 압축 및 분할 함수
+│   └── credential.py         # AWS 자격증명 관리
 │
 ├── commands/                  # CLI 명령어 (얇은 레이어)
 │   ├── __init__.py
@@ -35,6 +36,8 @@ src/cli_onprem/
 │   ├── helm_local.py         # Helm 로컬 작업
 │   ├── s3_share.py           # S3 공유 기능
 │   └── tar_fat32.py          # FAT32 호환 압축
+│
+├── libs/                      # 외부 라이브러리 래퍼 (현재 비어있음)
 │
 └── __main__.py               # 진입점
 ```
@@ -69,17 +72,17 @@ Commands → Services → Utils
 
 ### Core 레이어 (`core/`)
 모든 명령어에서 공유하는 프레임워크 수준의 기능:
-- CLI 컨텍스트 및 설정 관리
-- 중앙화된 에러 처리
-- 로깅 설정
-- 공통 타입 정의
+- 중앙화된 에러 처리 (CustomError, ErrorContext)
+- 로깅 설정 및 관리
+- 공통 타입 정의 (ImageReference, S3Config 등)
 
 ### Utils 레이어 (`utils/`)
 어디서든 사용할 수 있는 순수 유틸리티 함수:
 - **shell.py**: `run_command()`, `check_command_exists()`
 - **file.py**: `safe_write()`, `ensure_dir()`, `read_yaml()`
 - **formatting.py**: `format_json()`, `format_table()`, `format_csv()`
-- **validation.py**: `validate_path()`, `validate_image_name()`
+- **fs.py**: `get_file_size()`, `resolve_path()`, `list_files()`
+- **hash.py**: `calculate_md5()`, `calculate_sha256()`, `verify_checksum()`
 
 ### Services 레이어 (`services/`)
 관심사별로 구성된 도메인 특화 비즈니스 로직:
@@ -119,6 +122,19 @@ Commands → Services → Utils
 - create_manifest(parts: list[Path], output_path: Path) -> None
 - verify_integrity(manifest_path: Path) -> bool
 - generate_restore_script(purge: bool = False) -> str
+```
+
+#### credential.py
+```python
+- get_config_dir() -> Path
+- get_credential_path() -> Path
+- ensure_config_directory() -> Path
+- load_credentials() -> dict[str, dict[str, str]]
+- save_credentials(credentials: dict[str, dict[str, str]]) -> None
+- get_profile_credentials(profile: str, check_aws: bool = True, check_bucket: bool = False) -> dict[str, str]
+- create_or_update_profile(profile: str, **kwargs) -> None
+- list_profiles() -> list[str]
+- profile_exists(profile: str) -> bool
 ```
 
 ### Commands 레이어 (`commands/`)
