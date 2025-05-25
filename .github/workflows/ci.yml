@@ -31,7 +31,7 @@ jobs:
       uses: astral-sh/setup-uv@v1
     - name: Install dependencies
       run: |
-        uv sync --locked --all-extras --dev
+        uv sync --all-extras --dev
     - name: Lint with pre-commit
       run: |
         uv run pre-commit run --all-files
