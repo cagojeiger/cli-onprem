@@ -5,7 +5,10 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-from botocore.exceptions import ClientError, ConnectionError  # type: ignore[import-untyped]
+from botocore.exceptions import (
+    ClientError,
+    ConnectionError,
+)
 from typer.testing import CliRunner
 
 from cli_onprem.__main__ import app
