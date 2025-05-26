@@ -42,12 +42,25 @@ CLI-ONPREM은 [Conventional Commits](https://www.conventionalcommits.org/) 형�
 - **메이저 버전 증가**: 
   - `feat!:` 또는 `fix!:` 등 타입 뒤에 `!`가 붙은 경우
   - 커밋 메시지 본문에 `BREAKING CHANGE:`가 포함된 경우
+  - **주의**: `major_on_zero = true` 설정으로 인해 0.x.x 버전에서 BREAKING CHANGE가 발생하면 0.(x+1).0이 아닌 1.0.0으로 바로 올라갑니다
 
 - **마이너 버전 증가**:
   - `feat:` 타입의 커밋이 있는 경우
 
 - **패치 버전 증가**:
   - `fix:` 타입의 커밋이 있는 경우
+
+### BREAKING CHANGE 감지 방식
+
+`python-semantic-release`는 Angular 커밋 파서(`AngularCommitParser`)를 사용하여 자동으로 BREAKING CHANGE를 감지합니다:
+
+1. **커밋 메시지 footer**: 커밋 메시지 본문 아래에 `BREAKING CHANGE:` 텍스트가 포함되면 자동으로 메이저 버전 증가로 인식
+2. **느낌표(!) 표기**: 커밋 타입 뒤에 `!`를 붙이면 (예: `feat!:`, `fix!:`) 메이저 버전 증가로 인식
+
+이 감지는 `pyproject.toml`의 다음 설정에 의해 작동합니다:
+```toml
+commit_parser = "semantic_release.commit_parser.angular:AngularCommitParser"
+```
 
 ### 예시
 
