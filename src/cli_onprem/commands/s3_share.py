@@ -56,6 +56,7 @@ def format_file_size(size_bytes: int) -> str:
     else:  # 1MB 미만은 KB로
         return f"{size_bytes / 1024:.1f}KB"
 
+
 app = typer.Typer(
     help="S3 공유 관련 작업 수행",
     context_settings=context_settings,
@@ -385,8 +386,7 @@ def presign(
         # expires 옵션 처리
         if expires < 1 or expires > 7:
             console.print(
-                "[bold red]오류: --expires는 "
-                "1에서 7 사이여야 합니다.[/bold red]"
+                "[bold red]오류: --expires는 1에서 7 사이여야 합니다.[/bold red]"
             )
             raise typer.Exit(code=1)
         expiry = expires * 24 * 60 * 60  # 일을 초로 변환
