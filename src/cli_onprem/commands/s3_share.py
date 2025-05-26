@@ -42,6 +42,20 @@ context_settings = {
     "allow_extra_args": True,  # Always allow extra args
 }
 
+
+def format_file_size(size_bytes: int) -> str:
+    """파일 크기를 적절한 단위로 변환하여 문자열로 반환."""
+    if size_bytes >= 1000 * 1024 * 1024:  # 1000MB 이상은 GB로
+        return f"{size_bytes / (1024 * 1024 * 1024):.1f}GB"
+    elif size_bytes >= 1024 * 1024:  # 1MB 이상은 MB로
+        size_mb = size_bytes / (1024 * 1024)
+        if size_mb >= 100:
+            return f"{size_mb:.0f}MB"
+        else:
+            return f"{size_mb:.1f}MB"
+    else:  # 1MB 미만은 KB로
+        return f"{size_bytes / 1024:.1f}KB"
+
 app = typer.Typer(
     help="S3 공유 관련 작업 수행",
     context_settings=context_settings,
@@ -358,28 +372,24 @@ def presign(
     ),
     output: Optional[str] = typer.Option(None, "--output", help="CSV 출력 파일 경로"),
     profile: str = PROFILE_OPTION,
-    expiry: int = typer.Option(
-        3600, "--expiry", help="URL 만료 시간(초), 기본값: 3600(1시간)"
-    ),
-    expires_in_days: Optional[int] = typer.Option(
-        None,
-        "--expires-in-days",
-        help="URL 만료 시간(일), 최대 7일. --expiry보다 우선함",
+    expires: int = typer.Option(
+        1,
+        "--expires",
+        help="URL 만료 시간(일), 기본값: 1일, 최대 7일",
     ),
 ) -> None:
     """선택한 폴더의 파일들 또는 개별 파일에 대한 presigned URL을 생성합니다."""
     init_logging()
 
     try:
-        # expires-in-days 옵션 처리
-        if expires_in_days is not None:
-            if expires_in_days < 1 or expires_in_days > 7:
-                console.print(
-                    "[bold red]오류: --expires-in-days는 "
-                    "1에서 7 사이여야 합니다.[/bold red]"
-                )
-                raise typer.Exit(code=1)
-            expiry = expires_in_days * 24 * 60 * 60  # 일을 초로 변환
+        # expires 옵션 처리
+        if expires < 1 or expires > 7:
+            console.print(
+                "[bold red]오류: --expires는 "
+                "1에서 7 사이여야 합니다.[/bold red]"
+            )
+            raise typer.Exit(code=1)
+        expiry = expires * 24 * 60 * 60  # 일을 초로 변환
         # 파이프 입력 처리
         path_from_pipe = None
         if not sys.stdin.isatty():
@@ -476,7 +486,7 @@ def presign(
         # CSV 데이터 생성
         csv_data = []
         expire_time = datetime.datetime.now() + timedelta(seconds=expiry)
-        expire_minutes = expiry // 60  # 만료 시간을 분 단위로 변환
+        expire_time_formatted = expire_time.strftime("%Y-%m-%d %H:%M")
 
         for file_info in files:
             try:
@@ -484,15 +494,14 @@ def presign(
                     s3_client, s3_bucket, file_info["key"], expires_in=expiry
                 )
 
-                size_mb = file_info["size"] / (1024 * 1024)  # 바이트를 MB로 변환
+                size_formatted = format_file_size(file_info["size"])
 
                 csv_data.append(
                     {
                         "filename": file_info["filename"],
                         "link": presigned_url,
-                        "expire_at": expire_time.isoformat(),
-                        "expire_minutes": expire_minutes,
-                        "size_mb": f"{size_mb:.2f}",
+                        "expire_at": expire_time_formatted,
+                        "size": size_formatted,
                     }
                 )
             except CLIError as e:
@@ -511,8 +520,7 @@ def presign(
                             "filename",
                             "link",
                             "expire_at",
-                            "expire_minutes",
-                            "size_mb",
+                            "size",
                         ],
                     )
                     writer.writeheader()
@@ -530,8 +538,7 @@ def presign(
                     "filename",
                     "link",
                     "expire_at",
-                    "expire_minutes",
-                    "size_mb",
+                    "size",
                 ],
             )
             writer.writeheader()
