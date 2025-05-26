@@ -139,10 +139,7 @@ default:
                 # 폴더 경로가 S3에 매핑되는 방식이 테스트 설정과 맞지 않을 수 있음
                 # 성공하면 CSV 형식으로 출력되고, 실패하면 에러 메시지
                 if result.exit_code == 0:
-                    assert (
-                        "filename,link,expire_at,size"
-                        in result.stdout
-                    )
+                    assert "filename,link,expire_at,size" in result.stdout
                 else:
                     assert "오류" in result.stdout or "경고" in result.stdout
 
