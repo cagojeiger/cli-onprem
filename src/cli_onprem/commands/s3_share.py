@@ -375,7 +375,8 @@ def presign(
         if expires_in_days is not None:
             if expires_in_days < 1 or expires_in_days > 7:
                 console.print(
-                    "[bold red]오류: --expires-in-days는 1에서 7 사이여야 합니다.[/bold red]"
+                    "[bold red]오류: --expires-in-days는 "
+                    "1에서 7 사이여야 합니다.[/bold red]"
                 )
                 raise typer.Exit(code=1)
             expiry = expires_in_days * 24 * 60 * 60  # 일을 초로 변환
