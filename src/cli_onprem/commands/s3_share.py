@@ -362,7 +362,9 @@ def presign(
         3600, "--expiry", help="URL 만료 시간(초), 기본값: 3600(1시간)"
     ),
     expires_in_days: Optional[int] = typer.Option(
-        None, "--expires-in-days", help="URL 만료 시간(일), 최대 7일. --expiry보다 우선함"
+        None,
+        "--expires-in-days",
+        help="URL 만료 시간(일), 최대 7일. --expiry보다 우선함",
     ),
 ) -> None:
     """선택한 폴더의 파일들 또는 개별 파일에 대한 presigned URL을 생성합니다."""
@@ -503,7 +505,14 @@ def presign(
             try:
                 with open(output, "w", newline="") as csvfile:
                     writer = csv.DictWriter(
-                        csvfile, fieldnames=["filename", "link", "expire_at", "expire_minutes", "size_mb"]
+                        csvfile,
+                        fieldnames=[
+                            "filename",
+                            "link",
+                            "expire_at",
+                            "expire_minutes",
+                            "size_mb",
+                        ],
                     )
                     writer.writeheader()
                     for row in csv_data:
@@ -515,7 +524,14 @@ def presign(
         else:
             output_csv = io.StringIO()
             writer = csv.DictWriter(
-                output_csv, fieldnames=["filename", "link", "expire_at", "expire_minutes", "size_mb"]
+                output_csv,
+                fieldnames=[
+                    "filename",
+                    "link",
+                    "expire_at",
+                    "expire_minutes",
+                    "size_mb",
+                ],
             )
             writer.writeheader()
             for row in csv_data:

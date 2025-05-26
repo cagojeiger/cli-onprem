@@ -139,7 +139,10 @@ default:
                 # 폴더 경로가 S3에 매핑되는 방식이 테스트 설정과 맞지 않을 수 있음
                 # 성공하면 CSV 형식으로 출력되고, 실패하면 에러 메시지
                 if result.exit_code == 0:
-                    assert "filename,link,expire_at,expire_minutes,size_mb" in result.stdout
+                    assert (
+                        "filename,link,expire_at,expire_minutes,size_mb"
+                        in result.stdout
+                    )
                 else:
                     assert "오류" in result.stdout or "경고" in result.stdout
 
@@ -374,12 +377,15 @@ default:
                 assert "filename,link,expire_at,expire_minutes,size_mb" in result.stdout
                 assert "5.00" in result.stdout  # 5MB
                 assert "4320" in result.stdout  # 3일 = 4320분
-                
+
                 # presigned URL 생성 시 expiry가 올바르게 전달되었는지 확인
                 mock_s3.generate_presigned_url.assert_called_with(
-                    'get_object',
-                    Params={'Bucket': 'test-bucket', 'Key': 'test-prefix/test-file.txt'},
-                    ExpiresIn=259200  # 3일 = 259200초
+                    "get_object",
+                    Params={
+                        "Bucket": "test-bucket",
+                        "Key": "test-prefix/test-file.txt",
+                    },
+                    ExpiresIn=259200,  # 3일 = 259200초
                 )
 
 
