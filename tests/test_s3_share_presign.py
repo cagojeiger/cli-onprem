@@ -65,7 +65,7 @@ default:
                     print(f"Output: {result.stdout}")
                 assert result.exit_code == 0
                 # CSV 형식으로 출력됨
-                assert "filename,link,expire_at,size" in result.stdout
+                assert "filename,link,expire_at,expire_minutes,size_mb" in result.stdout
                 assert "https://s3.example.com/signed-url" in result.stdout
 
 
@@ -139,7 +139,7 @@ default:
                 # 폴더 경로가 S3에 매핑되는 방식이 테스트 설정과 맞지 않을 수 있음
                 # 성공하면 CSV 형식으로 출력되고, 실패하면 에러 메시지
                 if result.exit_code == 0:
-                    assert "filename,link,expire_at,size" in result.stdout
+                    assert "filename,link,expire_at,expire_minutes,size_mb" in result.stdout
                 else:
                     assert "오류" in result.stdout or "경고" in result.stdout
 
@@ -319,3 +319,122 @@ default:
 
                 # 에러가 발생하면 예외가 발생
                 assert result.exception is not None
+
+
+def test_presign_command_expires_in_days() -> None:
+    """expires-in-days 옵션 테스트."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        home_dir = Path(tmpdir) / "home"
+        home_dir.mkdir()
+        config_dir = home_dir / ".cli-onprem"
+        config_dir.mkdir()
+        credential_path = config_dir / "credential.yaml"
+        credential_path.write_text(
+            """
+default:
+  aws_access_key: test_key
+  aws_secret_key: test_secret
+  region: us-east-1
+  bucket: test-bucket
+  prefix: test-prefix
+"""
+        )
+
+        with mock.patch("pathlib.Path.home", return_value=home_dir):
+            with mock.patch("boto3.client") as mock_client:
+                mock_s3 = mock.MagicMock()
+                mock_client.return_value = mock_s3
+
+                mock_s3.head_object.return_value = {
+                    "ContentLength": 5242880,  # 5MB
+                    "ETag": '"abc123"',
+                }
+
+                mock_s3.generate_presigned_url.return_value = (
+                    "https://s3.example.com/signed-url"
+                )
+
+                # 3일 만료 테스트
+                result = runner.invoke(
+                    app,
+                    [
+                        "s3-share",
+                        "presign",
+                        "--select-path",
+                        "test-file.txt",
+                        "--expires-in-days",
+                        "3",
+                        "--profile",
+                        "default",
+                    ],
+                )
+
+                assert result.exit_code == 0
+                # CSV 형식으로 출력됨
+                assert "filename,link,expire_at,expire_minutes,size_mb" in result.stdout
+                assert "5.00" in result.stdout  # 5MB
+                assert "4320" in result.stdout  # 3일 = 4320분
+                
+                # presigned URL 생성 시 expiry가 올바르게 전달되었는지 확인
+                mock_s3.generate_presigned_url.assert_called_with(
+                    'get_object',
+                    Params={'Bucket': 'test-bucket', 'Key': 'test-prefix/test-file.txt'},
+                    ExpiresIn=259200  # 3일 = 259200초
+                )
+
+
+def test_presign_command_expires_in_days_invalid() -> None:
+    """expires-in-days 옵션 유효성 검사 테스트."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        home_dir = Path(tmpdir) / "home"
+        home_dir.mkdir()
+        config_dir = home_dir / ".cli-onprem"
+        config_dir.mkdir()
+        credential_path = config_dir / "credential.yaml"
+        credential_path.write_text(
+            """
+default:
+  aws_access_key: test_key
+  aws_secret_key: test_secret
+  region: us-east-1
+  bucket: test-bucket
+  prefix: test-prefix
+"""
+        )
+
+        with mock.patch("pathlib.Path.home", return_value=home_dir):
+            # 8일 (최대값 초과) 테스트
+            result = runner.invoke(
+                app,
+                [
+                    "s3-share",
+                    "presign",
+                    "--select-path",
+                    "test-file.txt",
+                    "--expires-in-days",
+                    "8",
+                    "--profile",
+                    "default",
+                ],
+            )
+
+            assert result.exit_code == 1
+            assert "--expires-in-days는 1에서 7 사이여야" in result.stdout
+
+            # 0일 (최소값 미만) 테스트
+            result = runner.invoke(
+                app,
+                [
+                    "s3-share",
+                    "presign",
+                    "--select-path",
+                    "test-file.txt",
+                    "--expires-in-days",
+                    "0",
+                    "--profile",
+                    "default",
+                ],
+            )
+
+            assert result.exit_code == 1
+            assert "--expires-in-days는 1에서 7 사이여야" in result.stdout
