@@ -54,8 +54,8 @@ default:
                         "presign",
                         "--select-path",
                         "test-file.txt",
-                        "--expiry",
-                        "3600",
+                        "--expires",
+                        "1",
                         "--profile",
                         "default",
                     ],
@@ -65,7 +65,7 @@ default:
                     print(f"Output: {result.stdout}")
                 assert result.exit_code == 0
                 # CSV 형식으로 출력됨
-                assert "filename,link,expire_at,expire_minutes,size_mb" in result.stdout
+                assert "filename,link,expire_at,size" in result.stdout
                 assert "https://s3.example.com/signed-url" in result.stdout
 
 
@@ -129,8 +129,8 @@ default:
                         "presign",
                         "--select-path",
                         "test-folder/",
-                        "--expiry",
-                        "3600",
+                        "--expires",
+                        "1",
                         "--profile",
                         "default",
                     ],
@@ -140,7 +140,7 @@ default:
                 # 성공하면 CSV 형식으로 출력되고, 실패하면 에러 메시지
                 if result.exit_code == 0:
                     assert (
-                        "filename,link,expire_at,expire_minutes,size_mb"
+                        "filename,link,expire_at,size"
                         in result.stdout
                     )
                 else:
@@ -324,8 +324,8 @@ default:
                 assert result.exception is not None
 
 
-def test_presign_command_expires_in_days() -> None:
-    """expires-in-days 옵션 테스트."""
+def test_presign_command_expires() -> None:
+    """expires 옵션 테스트."""
     with tempfile.TemporaryDirectory() as tmpdir:
         home_dir = Path(tmpdir) / "home"
         home_dir.mkdir()
@@ -365,7 +365,7 @@ default:
                         "presign",
                         "--select-path",
                         "test-file.txt",
-                        "--expires-in-days",
+                        "--expires",
                         "3",
                         "--profile",
                         "default",
@@ -374,9 +374,8 @@ default:
 
                 assert result.exit_code == 0
                 # CSV 형식으로 출력됨
-                assert "filename,link,expire_at,expire_minutes,size_mb" in result.stdout
-                assert "5.00" in result.stdout  # 5MB
-                assert "4320" in result.stdout  # 3일 = 4320분
+                assert "filename,link,expire_at,size" in result.stdout
+                assert "5.0MB" in result.stdout  # 5MB
 
                 # presigned URL 생성 시 expiry가 올바르게 전달되었는지 확인
                 mock_s3.generate_presigned_url.assert_called_with(
@@ -389,8 +388,8 @@ default:
                 )
 
 
-def test_presign_command_expires_in_days_invalid() -> None:
-    """expires-in-days 옵션 유효성 검사 테스트."""
+def test_presign_command_expires_invalid() -> None:
+    """expires 옵션 유효성 검사 테스트."""
     with tempfile.TemporaryDirectory() as tmpdir:
         home_dir = Path(tmpdir) / "home"
         home_dir.mkdir()
@@ -417,7 +416,7 @@ default:
                     "presign",
                     "--select-path",
                     "test-file.txt",
-                    "--expires-in-days",
+                    "--expires",
                     "8",
                     "--profile",
                     "default",
@@ -425,7 +424,7 @@ default:
             )
 
             assert result.exit_code == 1
-            assert "--expires-in-days는 1에서 7 사이여야" in result.stdout
+            assert "--expires는 1에서 7 사이여야" in result.stdout
 
             # 0일 (최소값 미만) 테스트
             result = runner.invoke(
@@ -435,7 +434,7 @@ default:
                     "presign",
                     "--select-path",
                     "test-file.txt",
-                    "--expires-in-days",
+                    "--expires",
                     "0",
                     "--profile",
                     "default",
@@ -443,4 +442,4 @@ default:
             )
 
             assert result.exit_code == 1
-            assert "--expires-in-days는 1에서 7 사이여야" in result.stdout
+            assert "--expires는 1에서 7 사이여야" in result.stdout
