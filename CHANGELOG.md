@@ -2,6 +2,88 @@
 
 
 
+## v1.0.0 (2025-05-26)
+
+### Breaking
+
+* refactor: simplify presign expiration options and improve CSV output
+
+- Replace --expiry and --expires-in-days with single --expires option (days)
+- Change default expiration from 1 hour to 1 day
+- Format expire_at as readable date (YYYY-MM-DD HH:MM)
+- Auto-format file sizes with appropriate units (KB/MB/GB)
+- Update all tests to use new option format
+
+BREAKING CHANGE: --expiry and --expires-in-days options removed in favor of --expires
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`b79ec00`](https://github.com/cagojeiger/cli-onprem/commit/b79ec0001fef7b0432cb46512fb3d588c288f8ef))
+
+### Documentation
+
+* docs: enhance CLAUDE.md with detailed architecture and development guidance
+
+- Add visual directory structure and layer responsibilities
+- Expand development commands with coverage testing and local installation
+- Include detailed architectural patterns (functional programming, type safety)
+- Add service layer module descriptions
+- Improve command implementation example with console usage
+- Enhance testing patterns with example test structure
+- Expand release process with complete conventional commit types
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`42f2c5b`](https://github.com/cagojeiger/cli-onprem/commit/42f2c5b3b07c3c4a604c5f5905ee0155962a8cc6))
+
+* docs: fix function signatures to match actual implementation
+
+- Update all service module function signatures to match actual code
+- Fix function names that have changed (e.g., create_client → create_s3_client)
+- Add missing functions that were not documented
+- Update utils module function listings to reflect current implementation
+- Remove references to non-existent functions
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`7216c63`](https://github.com/cagojeiger/cli-onprem/commit/7216c63845670d77d38f76cc85604ae849f30e72))
+
+* docs: update architecture.md to match current source structure
+
+- Remove references to non-existent files (core/cli.py, utils/validation.py)
+- Add missing directories and files (libs/, services/credential.py, utils/fs.py, utils/hash.py)
+- Update Core layer description to reflect actual implementation
+- Add credential.py function documentation to services section
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`8d65da1`](https://github.com/cagojeiger/cli-onprem/commit/8d65da133021e5390d461602b38552321cf311c1))
+
+### Feature
+
+* feat: enhance s3-share presign with days expiration and improved CSV output
+
+- Add --expires-in-days option (1-7 days max) that takes precedence over --expiry
+- Convert expiration time to minutes in CSV output
+- Convert file size to MB in CSV output
+- Update CSV headers: expire_minutes and size_mb columns added
+- Add comprehensive tests for new functionality
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`62bf48f`](https://github.com/cagojeiger/cli-onprem/commit/62bf48f628517177abe89b66a02f9b13c7c41e2f))
+
+### Fix
+
+* fix: resolve line length issue for pre-commit ([`4e4ff03`](https://github.com/cagojeiger/cli-onprem/commit/4e4ff03a06d6537a9607a91a94ef19fb97ca29d6))
+
+### Style
+
+* style: apply ruff formatting ([`8f39212`](https://github.com/cagojeiger/cli-onprem/commit/8f392124a7e71a8ac8b7f67ec44b4503071db123))
+
+* style: apply pre-commit formatting ([`83c7121`](https://github.com/cagojeiger/cli-onprem/commit/83c71217b1da40a244261c115d88f916a6446a44))
+
+
 ## v0.12.0 (2025-05-25)
 
 ### Feature
