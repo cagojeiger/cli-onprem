@@ -14,6 +14,7 @@ from cli_onprem.core.errors import handle_error
 from cli_onprem.core.logging import init_logging, set_log_level
 from cli_onprem.core.types import CONTEXT_SETTINGS
 from cli_onprem.services import docker, helm
+from cli_onprem.services.docker_args import extract_images_from_args
 from cli_onprem.utils import formatting
 
 app = typer.Typer(
@@ -77,6 +78,13 @@ JSON_OPTION = typer.Option(False, "--json", help="JSON 배열 형식으로 출�
 RAW_OPTION = typer.Option(
     False, "--raw", help="이미지 이름 표준화 없이 원본 그대로 출력"
 )
+REGISTRY_PATTERN_OPTION = typer.Option(
+    [],
+    "--registry-pattern",
+    "-r",
+    help="명령줄 인수에서 이미지를 추출할 때 사용할 레지스트리 패턴 "
+    "(여러 개 지정 가능)",
+)
 
 
 @app.command()
@@ -92,12 +100,16 @@ def extract_images(
     quiet: bool = QUIET_OPTION,
     json_output: bool = JSON_OPTION,
     raw: bool = RAW_OPTION,
+    registry_patterns: list[str] = REGISTRY_PATTERN_OPTION,
 ) -> None:
     """Helm 차트에서 사용되는 Docker 이미지 참조를 추출합니다.
 
     .tgz 형식의 압축된 차트 아카이브 또는 압축이 풀린 차트 디렉토리를
     처리할 수 있습니다.
     추가 values 파일을 지정하여 이미지 버전 등의 설정을 적용할 수 있습니다.
+
+    이미지는 YAML 필드와 명령줄 인수 모두에서 추출됩니다.
+    --registry-pattern 옵션으로 추가 레지스트리 패턴을 지정할 수 있습니다.
 
     출력은 기본적으로 각 줄마다 하나의 이미지 참조를 표시하며,
     --json 옵션을 사용하면 JSON 배열 형식으로 출력됩니다.
@@ -127,12 +139,16 @@ def extract_images(
             # 이미지 추출
             images = docker.extract_images_from_yaml(rendered, normalize=not raw)
 
-            if images:
+            arg_images = extract_images_from_args(rendered, registry_patterns or None)
+
+            all_images = sorted(set(images) | set(arg_images))
+
+            if all_images:
                 # 출력
                 if json_output:
-                    console.print(formatting.format_json(images))
+                    console.print(formatting.format_json(all_images))
                 else:
-                    for image in images:
+                    for image in all_images:
                         console.print(image)
             else:
                 console.print("[bold red]이미지 필드를 찾을 수 없음[/bold red]")
