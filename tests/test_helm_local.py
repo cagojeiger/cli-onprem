@@ -504,3 +504,107 @@ def test_helm_template_failure() -> None:
                         # Should exit with error code
                         assert result.exit_code == 1
                         assert "명령어 실행 실패" in result.stdout
+
+
+def test_extract_images_with_command_line_args() -> None:
+    """Test extracting images from command-line arguments."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = pathlib.Path(tmpdir)
+
+        with mock.patch("cli_onprem.services.helm.check_helm_installed"):
+            with mock.patch("cli_onprem.services.helm.prepare_chart") as mock_prepare:
+                with mock.patch("cli_onprem.services.helm.update_dependencies"):
+                    with mock.patch(
+                        "cli_onprem.services.helm.render_template"
+                    ) as mock_template:
+                        with mock.patch(
+                            "cli_onprem.services.docker.extract_images_from_yaml"
+                        ) as mock_collect:
+                            with mock.patch(
+                                "cli_onprem.services.docker_args.extract_images_from_args"
+                            ) as mock_args:
+                                mock_prepare.return_value = tmp_path / "chart"
+                                prometheus_image = (
+                                    "quay.io/prometheus-operator/"
+                                    "prometheus-config-reloader:v0.81.0"
+                                )
+                                arg_prefix = "--prometheus-config-reloader="
+                                mock_template.return_value = f"""
+                                apiVersion: apps/v1
+                                kind: Deployment
+                                spec:
+                                  template:
+                                    spec:
+                                      containers:
+                                      - args:
+                                        - {arg_prefix}{prometheus_image}
+                                """
+                                mock_collect.return_value = [
+                                    "docker.io/library/nginx:latest"
+                                ]
+                                mock_args.return_value = [
+                                    "quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0"
+                                ]
+
+                                result = runner.invoke(
+                                    app,
+                                    [
+                                        "helm-local",
+                                        "extract-images",
+                                        str(tmp_path / "chart.tgz"),
+                                        "--registry-pattern",
+                                        "quay.io",
+                                    ],
+                                )
+
+                                assert result.exit_code == 0
+                                assert "docker.io/library/nginx:latest" in result.stdout
+                                assert (
+                                    "quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0"
+                                    in result.stdout
+                                )
+                                mock_args.assert_called_once()
+
+
+def test_extract_images_with_multiple_registry_patterns() -> None:
+    """Test extracting images with multiple registry patterns."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = pathlib.Path(tmpdir)
+
+        with mock.patch("cli_onprem.services.helm.check_helm_installed"):
+            with mock.patch("cli_onprem.services.helm.prepare_chart") as mock_prepare:
+                with mock.patch("cli_onprem.services.helm.update_dependencies"):
+                    with mock.patch(
+                        "cli_onprem.services.helm.render_template"
+                    ) as mock_template:
+                        with mock.patch(
+                            "cli_onprem.services.docker.extract_images_from_yaml"
+                        ) as mock_collect:
+                            with mock.patch(
+                                "cli_onprem.services.docker_args.extract_images_from_args"
+                            ) as mock_args:
+                                mock_prepare.return_value = tmp_path / "chart"
+                                mock_template.return_value = "rendered content"
+                                mock_collect.return_value = []
+                                mock_args.return_value = [
+                                    "quay.io/app:latest",
+                                    "docker.io/nginx:latest",
+                                ]
+
+                                result = runner.invoke(
+                                    app,
+                                    [
+                                        "helm-local",
+                                        "extract-images",
+                                        str(tmp_path / "chart.tgz"),
+                                        "-r",
+                                        "quay.io",
+                                        "-r",
+                                        "docker.io",
+                                    ],
+                                )
+
+                                assert result.exit_code == 0
+                                mock_args.assert_called_once_with(
+                                    "rendered content", ["quay.io", "docker.io"]
+                                )
