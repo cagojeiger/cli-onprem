@@ -2,6 +2,13 @@
 
 
 
+## v1.1.1 (2025-05-29)
+
+### Fix
+
+* fix: update uv ([`d31c21e`](https://github.com/cagojeiger/cli-onprem/commit/d31c21e0b5fd26b5aa36ba6015a71d76f834810f))
+
+
 ## v1.1.0 (2025-05-29)
 
 ### Chore
