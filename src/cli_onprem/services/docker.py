@@ -1,8 +1,10 @@
 """Docker 관련 비즈니스 로직."""
 
+import os
+import re
 import subprocess
 import time
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Set, Tuple
 
 import yaml
 
@@ -12,6 +14,74 @@ from cli_onprem.core.types import ImageSet
 from cli_onprem.utils.shell import check_command_exists
 
 logger = get_logger("services.docker")
+
+# 기본 레지스트리 목록
+DEFAULT_REGISTRIES = [
+    "docker.io",
+    "quay.io",
+    "gcr.io",
+    "registry.k8s.io",
+    "ghcr.io",
+    "nvcr.io",
+    "public.ecr.aws",
+]
+
+
+def extract_images_from_text(
+    text: str, registries: Optional[List[str]] = None
+) -> Set[str]:
+    """텍스트에서 정규식으로 컨테이너 이미지 참조를 추출합니다.
+
+    Args:
+        text: 검색할 텍스트
+        registries: 검색할 레지스트리 목록 (기본값: 환경변수 또는 일반적인 레지스트리)
+
+    Returns:
+        발견된 이미지 세트
+    """
+    if registries is None:
+        # 환경변수에서 추가 레지스트리 읽기
+        env_registries = os.environ.get("CLI_ONPREM_REGISTRIES", "")
+        registries = DEFAULT_REGISTRIES.copy()
+        if env_registries:
+            registries.extend(
+                [r.strip() for r in env_registries.split(",") if r.strip()]
+            )
+
+    # 레지스트리 패턴 생성
+    registry_pattern = "|".join(re.escape(reg) for reg in registries)
+
+    # 이미지 참조 정규식 패턴
+    # 형식: (registry/)?(namespace/)?image(:tag|@digest)?
+    image_pattern = rf"""
+        (?:^|[\s"'=])                           # 시작 또는 공백, 따옴표, = 뒤
+        ((?:{registry_pattern})/)                # 레지스트리
+        ([a-z0-9_-]+(?:/[a-z0-9_-]+)*)          # 네임스페이스/이미지
+        (?::([a-z0-9_.-]+)|@(sha256:[a-f0-9]{{64}}))?  # 태그 또는 다이제스트
+        (?:$|[\s"'])                            # 끝 또는 공백, 따옴표
+    """
+
+    pattern = re.compile(image_pattern, re.VERBOSE | re.IGNORECASE)
+    images = set()
+
+    for match in pattern.finditer(text):
+        registry = match.group(1).rstrip("/") if match.group(1) else ""
+        image_path = match.group(2)
+        tag = match.group(3)
+        digest = match.group(4)
+
+        if registry and image_path:
+            full_image = f"{registry}/{image_path}"
+            if digest:
+                full_image = f"{full_image}@{digest}"
+            elif tag:
+                full_image = f"{full_image}:{tag}"
+            else:
+                full_image = f"{full_image}:latest"
+
+            images.add(full_image)
+
+    return images
 
 
 def normalize_image_name(image: str) -> str:
@@ -88,12 +158,15 @@ def normalize_image_name(image: str) -> str:
     return normalized
 
 
-def extract_images_from_yaml(yaml_content: str, normalize: bool = True) -> List[str]:
+def extract_images_from_yaml(
+    yaml_content: str, normalize: bool = True, extract_from_text: bool = True
+) -> List[str]:
     """YAML 문서에서 이미지 참조를 파싱하고 정렬된 목록을 반환합니다.
 
     Args:
         yaml_content: 렌더링된 Kubernetes 매니페스트
         normalize: 이미지 이름 정규화 여부
+        extract_from_text: 텍스트 패턴 매칭으로 추가 이미지 추출 여부
 
     Returns:
         정렬된 이미지 목록
@@ -108,6 +181,13 @@ def extract_images_from_yaml(yaml_content: str, normalize: bool = True) -> List[
             _traverse(doc, images)
 
     logger.info(f"총 {doc_count}개 문서 처리, {len(images)}개 고유 이미지 발견")
+
+    # 텍스트 기반 추가 이미지 추출
+    if extract_from_text:
+        text_images = extract_images_from_text(yaml_content)
+        if text_images:
+            logger.info(f"텍스트 패턴 매칭으로 {len(text_images)}개 추가 이미지 발견")
+            images.update(text_images)
 
     if normalize:
         normalized_images = {normalize_image_name(img) for img in images}
