@@ -2,6 +2,48 @@
 
 
 
+## v1.1.0 (2025-05-29)
+
+### Chore
+
+* chore: update uv.lock file ([`76053db`](https://github.com/cagojeiger/cli-onprem/commit/76053db4702bc0f0804ae04c8de19b7be7c2f8f2))
+
+### Documentation
+
+* docs: enhance CLAUDE.md with detailed architecture and development guidance
+
+- Add comprehensive development commands including PyPI upload
+- Clarify src layout structure with visual directory tree
+- Explain package vs module naming convention (cli-onprem vs cli_onprem)
+- Add detailed command implementation pattern with example
+- Include service layer responsibilities for each module
+- Document testing patterns and CI multi-version support
+- Detail release process with GitHub Actions workflow ([`ba0da4e`](https://github.com/cagojeiger/cli-onprem/commit/ba0da4e60531a592bcd1c0baff14355755795f1d))
+
+* docs: major_on_zero 설정 및 BREAKING CHANGE 감지 방식 문서화
+
+- 0.x.x 버전에서 BREAKING CHANGE 발생 시 1.0.0으로 올라가는 규칙 추가
+- Angular 커밋 파서의 BREAKING CHANGE 자동 감지 방식 설명
+- 커밋 메시지 footer와 느낌표(\!) 표기법 상세 설명
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`afee316`](https://github.com/cagojeiger/cli-onprem/commit/afee3162343cccbcd442e83a3a3f8d592e0c260c))
+
+### Feature
+
+* feat: helm 차트에서 커맨드 라인 인자의 이미지도 추출하는 기능 추가
+
+- extract_images_from_text 함수 추가: 정규식 기반 이미지 패턴 매칭
+- 환경변수 CLI_ONPREM_REGISTRIES로 커스텀 레지스트리 지원
+- extract_images_from_yaml에 extract_from_text 파라미터 추가 (기본값: True)
+- prometheus-config-reloader 같은 커맨드 라인 인자의 이미지도 자동 추출
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`3a416c2`](https://github.com/cagojeiger/cli-onprem/commit/3a416c20e53c6e6d3e8734cf21539a5c2fe0288f))
+
+
 ## v1.0.0 (2025-05-26)
 
 ### Breaking
