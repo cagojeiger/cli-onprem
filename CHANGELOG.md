@@ -2,6 +2,20 @@
 
 
 
+## v1.3.1 (2025-06-26)
+
+### Fix
+
+* fix: remove extra space in GitHub Actions user config
+
+Remove unnecessary extra space in git config command to maintain
+consistent formatting across the workflow file.
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`528f28a`](https://github.com/cagojeiger/cli-onprem/commit/528f28a677ee3e176afedebebb35a8b789459ef2))
+
+
 ## v1.3.0 (2025-06-26)
 
 ### Feature
