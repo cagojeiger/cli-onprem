@@ -34,7 +34,15 @@ class TestVersion:
         except PackageNotFoundError:
             # 개발 환경에서는 pyproject.toml의 버전과 비교
             import os
-            import tomllib
+            import sys
+
+            if sys.version_info >= (3, 11):
+                import tomllib
+            else:
+                try:
+                    import tomli as tomllib  # type: ignore[import-not-found]
+                except ImportError:
+                    pytest.skip("tomli not available for Python < 3.11")
 
             pyproject_path = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
@@ -63,7 +71,6 @@ class TestVersion:
             mock_version.side_effect = PackageNotFoundError("Package not found")
             with patch("os.path.exists", return_value=False):
                 # __init__.py를 다시 import하여 버전 로직 재실행
-                import importlib
                 import sys
 
                 # 캐시된 모듈 제거
