@@ -4,7 +4,6 @@ import re
 from importlib.metadata import PackageNotFoundError
 from unittest.mock import patch
 
-import pytest
 from typer.testing import CliRunner
 
 from cli_onprem.__main__ import app
