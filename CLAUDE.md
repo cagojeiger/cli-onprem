@@ -188,3 +188,42 @@ Releases are automated via GitHub Actions:
 4. Packages are built and uploaded to TestPyPI first
 5. Non-RC/beta versions are then uploaded to PyPI
 6. Concurrency groups prevent duplicate release runs
+
+## Version Management
+
+The project now includes dynamic version management:
+- Version is displayed with `cli-onprem --version`
+- In production: reads from installed package metadata
+- In development: displays "dev" version
+- Version is included in help text: "CLI-ONPREM v{version}"
+- No manual version updates needed - handled by semantic-release
+
+## CI/CD Pipeline
+
+GitHub Actions workflows:
+- **CI**: Runs on every PR and push to main
+  - Tests against Python 3.9, 3.10, 3.11, and 3.12
+  - Runs pre-commit hooks (ruff, black, mypy)
+  - Builds package to verify packaging
+- **Release**: Automatic version bumping and PyPI deployment
+  - Uses `GH_TOKEN` for GitHub operations
+  - Requires `TEST_PYPI_API_TOKEN` and `PYPI_API_TOKEN` secrets
+
+## Creating Pull Requests
+
+When creating PRs for this project:
+1. Create feature branch: `git checkout -b feat/feature-name` or `fix/bug-name`
+2. Make changes following the architecture patterns
+3. Run tests locally: `uv run pytest -q`
+4. Run linting: `SKIP=uv-lock uv run pre-commit run --all-files`
+5. Commit with semantic-release format
+6. Push and create PR: `gh pr create`
+
+The project uses `uv` for dependency management - always use `uv lock` when updating dependencies.
+
+Note: All commits should end with:
+```
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
