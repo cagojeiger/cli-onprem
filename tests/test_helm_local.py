@@ -474,6 +474,103 @@ def test_helm_dependency_update_failure() -> None:
                             mock_template.assert_called_once()
 
 
+def test_extract_images_with_skip_dependency_update() -> None:
+    """Test extract-images command with --skip-dependency-update option."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = pathlib.Path(tmpdir)
+
+        with mock.patch("cli_onprem.services.helm.check_helm_installed"):
+            with mock.patch("cli_onprem.services.helm.prepare_chart") as mock_prepare:
+                with mock.patch(
+                    "cli_onprem.services.helm.update_dependencies"
+                ) as mock_update_deps:
+                    with mock.patch(
+                        "cli_onprem.services.helm.render_template"
+                    ) as mock_template:
+                        with mock.patch(
+                            "cli_onprem.services.docker.extract_images_from_yaml"
+                        ) as mock_collect:
+                            mock_prepare.return_value = tmp_path / "chart"
+                            mock_template.return_value = """
+                            apiVersion: apps/v1
+                            kind: Deployment
+                            metadata:
+                              name: test
+                            spec:
+                              template:
+                                spec:
+                                  containers:
+                                  - name: test
+                                    image: test:latest
+                            """
+                            mock_collect.return_value = [
+                                "docker.io/library/test:latest"
+                            ]
+
+                            result = runner.invoke(
+                                app,
+                                [
+                                    "helm-local",
+                                    "extract-images",
+                                    str(tmp_path / "chart.tgz"),
+                                    "--skip-dependency-update",
+                                ],
+                            )
+
+                            assert result.exit_code == 0
+                            assert "docker.io/library/test:latest" in result.stdout
+                            # 의존성 업데이트가 호출되지 않아야 함
+                            mock_update_deps.assert_not_called()
+
+
+def test_extract_images_without_skip_dependency_update() -> None:
+    """Test extract-images command without --skip-dependency-update option (default)."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = pathlib.Path(tmpdir)
+
+        with mock.patch("cli_onprem.services.helm.check_helm_installed"):
+            with mock.patch("cli_onprem.services.helm.prepare_chart") as mock_prepare:
+                with mock.patch(
+                    "cli_onprem.services.helm.update_dependencies"
+                ) as mock_update_deps:
+                    with mock.patch(
+                        "cli_onprem.services.helm.render_template"
+                    ) as mock_template:
+                        with mock.patch(
+                            "cli_onprem.services.docker.extract_images_from_yaml"
+                        ) as mock_collect:
+                            mock_prepare.return_value = tmp_path / "chart"
+                            mock_template.return_value = """
+                            apiVersion: apps/v1
+                            kind: Deployment
+                            metadata:
+                              name: test
+                            spec:
+                              template:
+                                spec:
+                                  containers:
+                                  - name: test
+                                    image: test:latest
+                            """
+                            mock_collect.return_value = [
+                                "docker.io/library/test:latest"
+                            ]
+
+                            result = runner.invoke(
+                                app,
+                                [
+                                    "helm-local",
+                                    "extract-images",
+                                    str(tmp_path / "chart.tgz"),
+                                ],
+                            )
+
+                            assert result.exit_code == 0
+                            assert "docker.io/library/test:latest" in result.stdout
+                            # 의존성 업데이트가 호출되어야 함 (기본 동작)
+                            mock_update_deps.assert_called_once_with(tmp_path / "chart")
+
+
 def test_helm_template_failure() -> None:
     """Test proper error handling when helm template fails."""
     with tempfile.TemporaryDirectory() as tmpdir:
