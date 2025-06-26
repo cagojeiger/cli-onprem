@@ -77,6 +77,11 @@ JSON_OPTION = typer.Option(False, "--json", help="JSON 배열 형식으로 출�
 RAW_OPTION = typer.Option(
     False, "--raw", help="이미지 이름 표준화 없이 원본 그대로 출력"
 )
+SKIP_DEPENDENCY_UPDATE_OPTION = typer.Option(
+    False,
+    "--skip-dependency-update",
+    help="차트 의존성 업데이트를 건너뛰고 빠르게 실행",
+)
 
 
 @app.command()
@@ -92,6 +97,7 @@ def extract_images(
     quiet: bool = QUIET_OPTION,
     json_output: bool = JSON_OPTION,
     raw: bool = RAW_OPTION,
+    skip_dependency_update: bool = SKIP_DEPENDENCY_UPDATE_OPTION,
 ) -> None:
     """Helm 차트에서 사용되는 Docker 이미지 참조를 추출합니다.
 
@@ -119,7 +125,8 @@ def extract_images(
             chart_root = helm.prepare_chart(chart, workdir)
 
             # 의존성 업데이트
-            helm.update_dependencies(chart_root)
+            if not skip_dependency_update:
+                helm.update_dependencies(chart_root)
 
             # 템플릿 렌더링
             rendered = helm.render_template(chart_root, values)
