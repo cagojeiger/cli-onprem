@@ -2,6 +2,62 @@
 
 
 
+## v1.3.0 (2025-06-26)
+
+### Feature
+
+* feat: add --version option and dynamic version loading
+
+- Add --version CLI option to display current version
+- Update __init__.py to dynamically load version from package metadata
+- Include version in help text (CLI-ONPREM v1.2.0)
+- Add comprehensive tests for version functionality using TDD approach
+- Handle development environment by reading from pyproject.toml
+- Support Python 3.9+ with tomllib/tomli compatibility
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`3bacee9`](https://github.com/cagojeiger/cli-onprem/commit/3bacee9bf26dea906a34ceee8427fa0e82a6017f))
+
+### Fix
+
+* fix: add tomli dependency for Python < 3.11 compatibility
+
+- Add tomli>=2.0.0 as conditional dependency for Python < 3.11
+- Update test to handle tomllib import conditionally
+- Fix CI failures for Python 3.9 and 3.10
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`ebed2ac`](https://github.com/cagojeiger/cli-onprem/commit/ebed2acd3913c1f2b3b99e094e0edd9d404cb213))
+
+### Refactor
+
+* refactor: simplify version handling for development environment
+
+- Remove tomli dependency and pyproject.toml parsing
+- Use 'dev' version in development environment instead of reading from file
+- Simplify test cases to support both installed and dev versions
+- Fix CI failures across all Python versions (3.9-3.12)
+
+This makes the version handling much simpler and more maintainable.
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`cb0f940`](https://github.com/cagojeiger/cli-onprem/commit/cb0f94096d7757845fbaa59775105c645764aae9))
+
+### Style
+
+* style: remove unused pytest import
+
+- Fix ruff linting error by removing unused import
+- This was caught by pre-commit hooks in CI
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`2e06dc1`](https://github.com/cagojeiger/cli-onprem/commit/2e06dc1c7eef2a57a5d2d67452225aaacbc84354))
+
+
 ## v1.2.0 (2025-06-26)
 
 ### Feature
