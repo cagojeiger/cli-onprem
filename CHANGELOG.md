@@ -2,6 +2,20 @@
 
 
 
+## v1.2.0 (2025-06-26)
+
+### Feature
+
+* feat: helm-local extract-images에 --skip-dependency-update 옵션 추가
+
+의존성 업데이트를 건너뛸 수 있는 옵션을 추가하여 빠른 이미지 추출이 가능하도록 함.
+기본 동작은 기존과 동일하게 의존성 업데이트를 수행함.
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`ec0df06`](https://github.com/cagojeiger/cli-onprem/commit/ec0df06a4ca75c7edb16c6cf7254f3166bb1e405))
+
+
 ## v1.1.1 (2025-05-29)
 
 ### Fix
