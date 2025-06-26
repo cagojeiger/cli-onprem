@@ -53,7 +53,7 @@ def main(
     if version:
         console.print(f"cli-onprem v{__version__}")
         raise typer.Exit()
-    
+
     # 명령어가 지정되지 않았고 --version도 아닌 경우에만 help 표시
     if ctx.invoked_subcommand is None:
         console.print(ctx.get_help())
