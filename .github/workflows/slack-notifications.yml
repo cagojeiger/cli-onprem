@@ -1,0 +1,49 @@
+name: Slack Notifications
+on:
+  workflow_run:
+    workflows: ["CI", "Release"]  # 중요한 워크플로우 선택
+    types: [completed]
+
+jobs:
+  notify:
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack Notification
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{
+            "text": "❌ *${{ github.event.workflow_run.name }}* 실패",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "❌ *${{ github.event.workflow_run.name }}* 워크플로우가 실패했습니다"
+                }
+              },
+              {
+                "type": "context",
+                "elements": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "브랜치: `${{ github.event.workflow_run.head_branch }}` | 실행자: ${{ github.event.workflow_run.actor.login }}"
+                  }
+                ]
+              },
+              {
+                "type": "actions",
+                "elements": [
+                  {
+                    "type": "button",
+                    "text": {
+                      "type": "plain_text",
+                      "text": "워크플로우 확인"
+                    },
+                    "url": "${{ github.event.workflow_run.html_url }}"
+                  }
+                ]
+              }
+            ]
+          }' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
