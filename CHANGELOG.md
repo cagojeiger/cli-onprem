@@ -2,6 +2,35 @@
 
 
 
+## v1.4.0 (2025-06-27)
+
+### Documentation
+
+* docs: update CLAUDE.md with version management and CI/CD details
+
+- Add version management section documenting --version option
+- Add CI/CD pipeline details for GitHub Actions workflows
+- Add pull request creation guidelines with uv usage
+- Include commit message formatting requirements
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`115df80`](https://github.com/cagojeiger/cli-onprem/commit/115df80756a88e53bb4d09a940ad057a14429a5d))
+
+### Feature
+
+* feat: GitHub Actions 실패 시 Slack 알림 추가
+
+- workflow_run 이벤트를 사용한 중앙 집중식 알림 시스템 구현
+- CI와 Release 워크플로우 실패 시 Slack 알림 전송
+- 모든 브랜치의 실패를 감지하여 알림
+- 기존 워크플로우 수정 없이 독립적으로 작동
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`17c6c63`](https://github.com/cagojeiger/cli-onprem/commit/17c6c639bd2abdae5afe5dc22aec932e4de090c5))
+
+
 ## v1.3.1 (2025-06-26)
 
 ### Fix
