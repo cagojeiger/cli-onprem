@@ -28,7 +28,9 @@ def create_tar_archive(input_path: Path, output_path: Path, parent_dir: Path) ->
     cmd = ["tar", "-czvf", str(output_path), "-C", str(parent_dir), str(relative_path)]
 
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(
+            cmd, check=True, capture_output=True, text=True, timeout=1800  # 디스크 I/O에 최대 30분
+        )
         logger.info(f"압축 완료: {output_path}")
     except subprocess.CalledProcessError as e:
         raise CommandError(f"압축 실패: {e.stderr}") from e
@@ -80,7 +82,9 @@ def split_file(
     cmd = ["split", "-b", chunk_size, str(file_path), output_prefix]
 
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(
+            cmd, check=True, capture_output=True, text=True, timeout=1800  # 파일 분할에 최대 30분
+        )
 
         # 생성된 파일들 찾기
         parts = sorted(output_dir.glob(f"{prefix}*" if prefix else "*"))
@@ -185,7 +189,12 @@ def verify_manifest(manifest_path: Path) -> None:
 
     try:
         subprocess.run(
-            cmd, check=True, cwd=str(working_dir), capture_output=True, text=True
+            cmd,
+            check=True,
+            cwd=str(working_dir),
+            capture_output=True,
+            text=True,
+            timeout=600,  # SHA256 검증에 최대 10분
         )
         logger.info("무결성 검증 완료")
     except subprocess.CalledProcessError as e:
@@ -254,7 +263,12 @@ def extract_tar_archive(
 
     try:
         subprocess.run(
-            cmd, check=True, cwd=str(extract_dir), capture_output=True, text=True
+            cmd,
+            check=True,
+            cwd=str(extract_dir),
+            capture_output=True,
+            text=True,
+            timeout=1800,  # 압축 해제에 최대 30분
         )
         logger.info("압축 해제 완료")
     except subprocess.CalledProcessError as e:
@@ -276,7 +290,9 @@ def get_directory_size_mb(path: Path) -> int:
     cmd = ["du", "-m", str(path)]
 
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd, check=True, capture_output=True, text=True, timeout=300  # 디렉터리 크기 계산에 최대 5분
+        )
         size_mb = int(result.stdout.split()[0])
         return size_mb
     except subprocess.CalledProcessError as e:
