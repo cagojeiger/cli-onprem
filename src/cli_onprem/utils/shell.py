@@ -52,7 +52,8 @@ def run_command(
             cmd_str += "..."
         raise CommandError(
             f"명령어가 {timeout}초 후 타임아웃되었습니다: {cmd_str}\n"
-            f"💡 힌트: 대용량 작업의 경우 CLI_ONPREM_LONG_TIMEOUT=7200 으로 시간을 늘려보세요."
+            "💡 힌트: 대용량 작업의 경우 CLI_ONPREM_LONG_TIMEOUT=7200 으로 "
+            "시간을 늘려보세요."
         ) from e
 
 
