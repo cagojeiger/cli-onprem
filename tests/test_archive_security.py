@@ -3,11 +3,12 @@
 Shell injection 취약점 방어를 검증합니다.
 """
 
-import pytest
 from pathlib import Path
 
-from cli_onprem.services.archive import calculate_sha256_manifest, merge_files
+import pytest
+
 from cli_onprem.core.errors import CommandError
+from cli_onprem.services.archive import calculate_sha256_manifest, merge_files
 
 
 def test_calculate_sha256_no_shell_injection(tmp_path: Path) -> None:
