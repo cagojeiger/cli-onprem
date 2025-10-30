@@ -97,16 +97,21 @@ def test_calculate_sha256_manifest() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
 
-        with mock.patch("subprocess.run") as mock_run:
-            mock_run.return_value = mock.MagicMock(
-                returncode=0, stdout="abc123  file1.part\ndef456  file2.part\n"
-            )
+        # 실제 파일 생성 (subprocess 모킹 대신)
+        file1 = tmp_path / "file1.part"
+        file1.write_bytes(b"content1")
 
-            manifest = calculate_sha256_manifest(tmp_path, "*.part")
+        file2 = tmp_path / "file2.part"
+        file2.write_bytes(b"content2")
 
-            assert len(manifest) == 2
-            assert manifest[0] == ("file1.part", "abc123")
-            assert manifest[1] == ("file2.part", "def456")
+        manifest = calculate_sha256_manifest(tmp_path, "*.part")
+
+        assert len(manifest) == 2
+        assert manifest[0][0] == "file1.part"
+        assert manifest[1][0] == "file2.part"
+        # 해시 길이 확인 (SHA256은 64자)
+        assert len(manifest[0][1]) == 64
+        assert len(manifest[1][1]) == 64
 
 
 def test_write_manifest_file() -> None:
@@ -152,14 +157,19 @@ def test_merge_files() -> None:
         parts_dir.mkdir()
         output_path = tmp_path / "merged.tar.gz"
 
-        with mock.patch("subprocess.run") as mock_run:
-            mock_run.return_value = mock.MagicMock(returncode=0)
-            merge_files(parts_dir, output_path, "*.part")
+        # 실제 파일 생성 (subprocess 모킹 대신)
+        part1 = parts_dir / "0000.part"
+        part1.write_bytes(b"Part 1 content")
 
-            mock_run.assert_called_once()
-            # Command is run through sh -c, so check the actual command string
-            assert "cat" in str(mock_run.call_args)
-            assert str(output_path) in str(mock_run.call_args)
+        part2 = parts_dir / "0001.part"
+        part2.write_bytes(b"Part 2 content")
+
+        merge_files(parts_dir, output_path, "*.part")
+
+        # 병합된 파일 검증
+        assert output_path.exists()
+        content = output_path.read_bytes()
+        assert content == b"Part 1 contentPart 2 content"
 
 
 def test_extract_tar_archive() -> None:
