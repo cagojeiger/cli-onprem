@@ -1,7 +1,5 @@
 """Docker 에러 파싱 테스트."""
 
-import pytest
-
 from cli_onprem.services.docker import _is_retryable_error, _parse_docker_error
 
 
@@ -45,7 +43,10 @@ def test_parse_manifest_unknown_error():
 
 def test_parse_network_timeout_error():
     """네트워크 타임아웃 오류 파싱."""
-    stderr = "Error: net/http: request canceled while waiting for connection (Client.Timeout exceeded)"
+    stderr = (
+        "Error: net/http: request canceled while waiting for connection "
+        "(Client.Timeout exceeded)"
+    )
     result = _parse_docker_error(stderr, "nginx:latest")
 
     assert "네트워크 오류" in result
@@ -55,7 +56,10 @@ def test_parse_network_timeout_error():
 
 def test_parse_connection_error():
     """연결 오류 파싱."""
-    stderr = "Error: Get https://registry-1.docker.io/v2/: dial tcp: lookup registry-1.docker.io: no such host"
+    stderr = (
+        "Error: Get https://registry-1.docker.io/v2/: dial tcp: "
+        "lookup registry-1.docker.io: no such host"
+    )
     result = _parse_docker_error(stderr, "redis:alpine")
 
     assert "네트워크 오류" in result
@@ -64,7 +68,10 @@ def test_parse_connection_error():
 
 def test_parse_disk_full_error():
     """디스크 공간 부족 오류 파싱."""
-    stderr = "Error: failed to register layer: write /var/lib/docker: no space left on device"
+    stderr = (
+        "Error: failed to register layer: write /var/lib/docker: "
+        "no space left on device"
+    )
     result = _parse_docker_error(stderr, "postgres:14")
 
     assert "디스크 공간 부족" in result
