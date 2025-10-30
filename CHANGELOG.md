@@ -2,6 +2,75 @@
 
 
 
+## v2.0.0 (2025-10-30)
+
+### Breaking
+
+* feat: add timeout support to prevent indefinite hangs
+
+- Add DEFAULT_TIMEOUT (300s) and LONG_TIMEOUT (3600s) constants
+- Support environment variables: CLI_ONPREM_TIMEOUT, CLI_ONPREM_LONG_TIMEOUT
+- Add timeout parameter to shell.run_command()
+- Apply appropriate timeouts to all subprocess calls:
+  * Docker: 30s (inspect/list), 3600s (pull/save) - for 50GB images
+  * Helm: 600s (dependency update), 300s (template)
+  * Archive: 1800s (tar/split), 600s (sha256sum), 300s (du)
+- Convert TimeoutExpired to CommandError with helpful hints
+- Add 12 new timeout tests in test_subprocess_timeout.py
+- Update existing tests to include timeout parameter
+- Add refactoring documentation (REFACTORING.md, architecture docs)
+
+BREAKING CHANGE: None - timeout parameter has sensible defaults
+
+Reviewed by: Gemini Agent, Engineering Taste Advisor
+- LONG_TIMEOUT increased to 3600s (60min) based on vLLM/Triton reality
+- Environment variable override recommended as core flexibility
+- Confirmed: not over-engineering, appropriate minimalist approach
+
+Fixes: Indefinite hangs in large Docker image operations
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`129a20c`](https://github.com/cagojeiger/cli-onprem/commit/129a20cca6c0acc8da0f17a2442a8ab41749a5cd))
+
+### Chore
+
+* chore: remove documentation files (will be added in separate PR) ([`d9945e8`](https://github.com/cagojeiger/cli-onprem/commit/d9945e8319b237928161a4dc190f179645cb7635))
+
+### Refactor
+
+* refactor: use named constants for all timeout values (5-tier)
+
+- Add 5-tier timeout constants: QUICK(30s), DEFAULT(300s), MEDIUM(600s), LONG(1800s), VERY_LONG(3600s)
+- Replace all hardcoded timeout values with named constants
+- Update LONG_TIMEOUT from 3600s to 1800s (30min for disk I/O)
+- Add VERY_LONG_TIMEOUT (3600s) for large Docker operations
+- Add QUICK_TIMEOUT (30s) for metadata queries
+- Add MEDIUM_TIMEOUT (600s) for downloads/verification
+- All timeout constants support environment variable override
+- Update tests to match new constant values
+- Add test for VERY_LONG_TIMEOUT
+
+Benefits:
+- Consistent timeout usage across all services
+- Single source of truth for timeout values
+- Easy to adjust globally via constants
+- User-configurable via 5 environment variables
+- Self-documenting semantic names
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`a96af84`](https://github.com/cagojeiger/cli-onprem/commit/a96af8431e797f676f1b4e25c95b20c2e1b68e4a))
+
+### Style
+
+* style: apply ruff format ([`037aff0`](https://github.com/cagojeiger/cli-onprem/commit/037aff0de6b286b931925aeb72698c320ad2d613))
+
+* style: split long error message line ([`48c18c9`](https://github.com/cagojeiger/cli-onprem/commit/48c18c9a3654e72393d4ca9f887f7257e8a6f6f7))
+
+* style: fix line length issues (ruff format) ([`b3d5c2f`](https://github.com/cagojeiger/cli-onprem/commit/b3d5c2f8ef601edadb4276ede7b2a8f6f402413d))
+
+
 ## v1.5.1 (2025-10-30)
 
 ### Fix
