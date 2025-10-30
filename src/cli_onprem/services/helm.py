@@ -7,6 +7,7 @@ from typing import List, Optional
 from cli_onprem.core.errors import check_command_installed
 from cli_onprem.core.logging import get_logger
 from cli_onprem.utils import file, shell
+from cli_onprem.utils.shell import DEFAULT_TIMEOUT, MEDIUM_TIMEOUT
 
 logger = get_logger("services.helm")
 
@@ -96,7 +97,7 @@ def update_dependencies(chart_dir: pathlib.Path) -> None:
         check=False,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
-        timeout=600,  # 차트 다운로드에 최대 10분
+        timeout=MEDIUM_TIMEOUT,  # 차트 다운로드에 최대 10분
     )
 
     logger.info("의존성 업데이트 완료")
@@ -142,6 +143,6 @@ def render_template(
     logger.info(f"실행 명령어: {' '.join(cmd)}")
 
     result = shell.run_command(
-        cmd, capture_output=True, timeout=300
+        cmd, capture_output=True, timeout=DEFAULT_TIMEOUT
     )  # 템플릿 렌더링에 최대 5분
     return result.stdout if result.stdout else ""

@@ -190,12 +190,14 @@ def test_helm_dependency_update() -> None:
         chart_dir = pathlib.Path("/path/to/chart")
         helm_dependency_update(chart_dir)
 
+        from cli_onprem.utils.shell import MEDIUM_TIMEOUT
+
         mock_run.assert_called_once_with(
             ["helm", "dependency", "update", str(chart_dir)],
             check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            timeout=600,
+            timeout=MEDIUM_TIMEOUT,
         )
 
 

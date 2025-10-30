@@ -110,12 +110,14 @@ def test_pull_image_with_arch() -> None:
         # pull_image now returns None on success
         pull_image("test:image", arch="linux/arm64")
 
+        from cli_onprem.utils.shell import VERY_LONG_TIMEOUT
+
         mock_run.assert_called_once_with(
             ["docker", "pull", "--platform", "linux/arm64", "test:image"],
             check=True,
             capture_output=True,
             text=True,
-            timeout=3600,
+            timeout=VERY_LONG_TIMEOUT,
         )
 
 

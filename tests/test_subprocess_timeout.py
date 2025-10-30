@@ -22,12 +22,21 @@ def test_default_timeout_value():
 
 
 def test_long_timeout_value():
-    """LONG_TIMEOUT이 3600초(60분)로 설정되어 있는지 확인."""
+    """LONG_TIMEOUT이 1800초(30분)로 설정되어 있는지 확인."""
     with mock.patch.dict(os.environ, {}, clear=True):
         import importlib
 
         importlib.reload(shell)
-        assert shell.LONG_TIMEOUT == 3600
+        assert shell.LONG_TIMEOUT == 1800
+
+
+def test_very_long_timeout_value():
+    """VERY_LONG_TIMEOUT이 3600초(60분)로 설정되어 있는지 확인."""
+    with mock.patch.dict(os.environ, {}, clear=True):
+        import importlib
+
+        importlib.reload(shell)
+        assert shell.VERY_LONG_TIMEOUT == 3600
 
 
 def test_timeout_env_var_override():
