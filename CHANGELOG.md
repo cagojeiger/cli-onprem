@@ -2,6 +2,43 @@
 
 
 
+## v1.5.1 (2025-10-30)
+
+### Fix
+
+* fix: remove shell injection vulnerabilities in archive service
+
+보안 취약점 수정:
+- calculate_sha256_manifest(): shell 명령 대신 Python hashlib 사용
+- merge_files(): shell 명령 대신 Python file I/O 사용
+- subprocess.run(["sh", "-c", cmd]) 패턴 제거
+
+변경사항:
+- glob 모듈로 안전하게 파일 패턴 매칭
+- hashlib으로 SHA256 직접 계산
+- 파일 병합을 Python으로 처리 (chunk 단위 복사)
+- 보안 테스트 10개 추가 (test_archive_security.py)
+- 기존 테스트 2개 업데이트 (실제 파일 사용)
+
+테스트:
+- 전체 159개 테스트 통과
+- Shell injection 시도 방어 검증
+- 경로 순회(path traversal) 방어 검증
+- 특수 문자 및 유니코드 파일명 처리
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`116329d`](https://github.com/cagojeiger/cli-onprem/commit/116329d319c5b2f8e341b545c4912857335a64ca))
+
+### Style
+
+* style: fix import order in test_archive_security.py
+
+- ruff auto-fix: import 순서 정렬
+- pathlib.Path import를 먼저 배치
+- 표준 라이브러리 → 서드파티 → 로컬 순서 ([`810b7ad`](https://github.com/cagojeiger/cli-onprem/commit/810b7ad8380b446d1478b7fc1d12d8e0cc4c2baf))
+
+
 ## v1.5.0 (2025-10-30)
 
 ### Feature
