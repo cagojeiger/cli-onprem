@@ -2,6 +2,28 @@
 
 
 
+## v2.2.0 (2025-10-30)
+
+### Feature
+
+* feat: add Docker daemon health check
+
+Docker 명령 실행 전에 daemon 상태를 확인하는 fail-fast 패턴 구현
+
+- check_docker_daemon() 함수 추가
+  - docker info로 daemon 응답 확인
+  - QUICK_TIMEOUT(30초) 사용
+  - 친절한 한국어 에러 메시지와 해결 방법 제공
+- docker-tar save 명령에 health check 적용
+- 5개의 단위 테스트 추가 (196 tests passing)
+
+이로써 Docker daemon 문제를 조기에 감지하여 사용자 경험이 개선됩니다.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`9244b74`](https://github.com/cagojeiger/cli-onprem/commit/9244b74bccc02c32f88deeaf48be0ef7dc71c103))
+
+
 ## v2.1.0 (2025-10-30)
 
 ### Feature
