@@ -40,7 +40,15 @@ jobs:
         uv run mypy src --strict --no-warn-unused-ignores
     - name: Test with pytest
       run: |
-        uv run pytest -q
+        uv run pytest --cov=src/cli_onprem --cov-report=xml --cov-report=term
+    - name: Upload coverage to Codecov
+      if: matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
     - name: Build package
       run: |
         uv run python -m build

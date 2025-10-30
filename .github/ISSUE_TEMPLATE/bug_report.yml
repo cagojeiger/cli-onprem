@@ -1,0 +1,102 @@
+name: Bug Report
+description: 버그 또는 문제를 보고합니다 / Report a bug or issue
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        버그 리포트를 작성해 주셔서 감사합니다. 가능한 한 자세히 작성해 주세요.
+        Thank you for reporting a bug. Please provide as much detail as possible.
+
+  - type: input
+    id: version
+    attributes:
+      label: CLI-ONPREM 버전 / Version
+      description: 어떤 버전을 사용하고 계신가요? (`cli-onprem --version`)
+      placeholder: "예: 2.2.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: command
+    attributes:
+      label: 명령어 / Command
+      description: 어떤 명령어에서 문제가 발생했나요?
+      options:
+        - docker-tar
+        - helm-local
+        - s3-share
+        - tar-fat32
+        - Other / 기타
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 문제 설명 / Description
+      description: 무슨 문제가 발생했나요?
+      placeholder: 문제를 명확하게 설명해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 재현 방법 / Steps to Reproduce
+      description: 문제를 재현하기 위한 단계를 알려주세요.
+      placeholder: |
+        1. 명령어 실행: cli-onprem docker-tar save nginx:latest
+        2. 다음과 같은 오류 발생: ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 예상 동작 / Expected Behavior
+      description: 어떤 결과를 예상하셨나요?
+      placeholder: 정상적으로 동작해야 하는 모습을 설명해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 동작 / Actual Behavior
+      description: 실제로 어떤 일이 일어났나요?
+      placeholder: 실제로 발생한 결과를 설명해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 로그 및 에러 메시지 / Logs and Error Messages
+      description: 관련 로그나 에러 메시지가 있다면 붙여넣어 주세요.
+      render: shell
+      placeholder: |
+        $ cli-onprem docker-tar save nginx:latest
+        Error: ...
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 환경 정보 / Environment
+      description: 운영 체제 및 환경 정보
+      placeholder: |
+        - OS: macOS 14.0 / Ubuntu 22.04 / Windows 11
+        - Python version: 3.11.5
+        - Docker version: 24.0.6 (if relevant)
+        - AWS CLI version: 2.13.0 (if relevant)
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 추가 정보 / Additional Context
+      description: 도움이 될 만한 다른 정보가 있나요?
+      placeholder: 스크린샷, 설정 파일 내용 등
