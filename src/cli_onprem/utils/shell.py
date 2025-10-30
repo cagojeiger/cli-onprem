@@ -43,7 +43,7 @@ def run_command(
             capture_output=capture_output,
             text=text,
             timeout=timeout,
-            **kwargs
+            **kwargs,
         )
     except subprocess.TimeoutExpired as e:
         # 친절한 에러 메시지 (해결 방법 포함)
