@@ -250,11 +250,10 @@ wheels = [
 
 [[package]]
 name = "cli-onprem"
-version = "1.2.0"
+version = "1.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "boto3" },
-    { name = "pydantic" },
     { name = "pyyaml" },
     { name = "rich" },
     { name = "tqdm" },
@@ -292,7 +291,6 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pre-commit-uv", marker = "extra == 'dev'" },
-    { name = "pydantic", specifier = "<2.0.0" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "pytest-mypy-plugins", marker = "extra == 'dev'" },
