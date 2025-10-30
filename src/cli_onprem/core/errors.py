@@ -1,6 +1,6 @@
 """에러 처리 함수 및 타입."""
 
-from typing import Optional
+from typing import List, Optional
 
 import typer
 from rich.console import Console
@@ -17,7 +17,57 @@ class CLIError(Exception):
 
 
 class CommandError(CLIError):
-    """명령 실행 중 발생하는 에러."""
+    """명령 실행 중 발생하는 에러.
+
+    외부 도구(docker, helm, aws, tar 등) 실행 실패 시 발생합니다.
+    명령어와 stderr를 포함하여 디버깅을 돕습니다.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        command: Optional[List[str]] = None,
+        stderr: Optional[str] = None,
+        exit_code: int = 1,
+    ):
+        super().__init__(message, exit_code)
+        self.command = command
+        self.stderr = stderr
+
+    def __str__(self) -> str:
+        msg = super().__str__()
+
+        if self.command:
+            msg += f"\n\n실행 명령:\n  {' '.join(self.command)}"
+
+        if self.stderr:
+            # stderr가 너무 길면 마지막 20줄만
+            stderr_lines = self.stderr.strip().split("\n")
+            if len(stderr_lines) > 20:
+                stderr_display = "\n".join(stderr_lines[-20:])
+                msg += f"\n\n상세 오류 (마지막 20줄):\n{stderr_display}"
+            else:
+                msg += f"\n\n상세 오류:\n{self.stderr}"
+
+        return msg
+
+
+class TransientError(CommandError):
+    """일시적인 오류로 재시도 가능.
+
+    네트워크 타임아웃, 레이트 리밋, 일시적인 서비스 장애 등.
+    자동화 스크립트에서 이 오류를 잡아 재시도할 수 있습니다.
+    """
+
+    pass
+
+
+class PermanentError(CommandError):
+    """영구적인 오류로 재시도 불필요.
+
+    잘못된 자격증명, 존재하지 않는 리소스, 권한 부족 등.
+    재시도해도 성공할 수 없는 오류입니다.
+    """
 
     pass
 
