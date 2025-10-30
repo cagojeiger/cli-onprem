@@ -7,6 +7,7 @@ from typing import List, Tuple
 
 from cli_onprem.core.errors import CommandError
 from cli_onprem.core.logging import get_logger
+from cli_onprem.utils.shell import DEFAULT_TIMEOUT, LONG_TIMEOUT, MEDIUM_TIMEOUT
 
 logger = get_logger("services.archive")
 
@@ -33,7 +34,7 @@ def create_tar_archive(input_path: Path, output_path: Path, parent_dir: Path) ->
             check=True,
             capture_output=True,
             text=True,
-            timeout=1800,  # 디스크 I/O에 최대 30분
+            timeout=LONG_TIMEOUT,  # 디스크 I/O에 최대 30분
         )
         logger.info(f"압축 완료: {output_path}")
     except subprocess.CalledProcessError as e:
@@ -91,7 +92,7 @@ def split_file(
             check=True,
             capture_output=True,
             text=True,
-            timeout=1800,  # 파일 분할에 최대 30분
+            timeout=LONG_TIMEOUT,  # 파일 분할에 최대 30분
         )
 
         # 생성된 파일들 찾기
@@ -202,7 +203,7 @@ def verify_manifest(manifest_path: Path) -> None:
             cwd=str(working_dir),
             capture_output=True,
             text=True,
-            timeout=600,  # SHA256 검증에 최대 10분
+            timeout=MEDIUM_TIMEOUT,  # SHA256 검증에 최대 10분
         )
         logger.info("무결성 검증 완료")
     except subprocess.CalledProcessError as e:
@@ -276,7 +277,7 @@ def extract_tar_archive(
             cwd=str(extract_dir),
             capture_output=True,
             text=True,
-            timeout=1800,  # 압축 해제에 최대 30분
+            timeout=LONG_TIMEOUT,  # 압축 해제에 최대 30분
         )
         logger.info("압축 해제 완료")
     except subprocess.CalledProcessError as e:
@@ -303,7 +304,7 @@ def get_directory_size_mb(path: Path) -> int:
             check=True,
             capture_output=True,
             text=True,
-            timeout=300,  # 디렉터리 크기 계산에 최대 5분
+            timeout=DEFAULT_TIMEOUT,  # 디렉터리 크기 계산에 최대 5분
         )
         size_mb = int(result.stdout.split()[0])
         return size_mb

@@ -7,8 +7,13 @@ from typing import Any, List, Optional
 from cli_onprem.core.errors import CommandError
 
 # 타임아웃 기본값 (환경 변수로 재정의 가능)
+QUICK_TIMEOUT = int(os.getenv("CLI_ONPREM_QUICK_TIMEOUT", "30"))  # 30초
 DEFAULT_TIMEOUT = int(os.getenv("CLI_ONPREM_TIMEOUT", "300"))  # 5분
-LONG_TIMEOUT = int(os.getenv("CLI_ONPREM_LONG_TIMEOUT", "3600"))  # 60분
+MEDIUM_TIMEOUT = int(os.getenv("CLI_ONPREM_MEDIUM_TIMEOUT", "600"))  # 10분
+LONG_TIMEOUT = int(os.getenv("CLI_ONPREM_LONG_TIMEOUT", "1800"))  # 30분
+VERY_LONG_TIMEOUT = int(
+    os.getenv("CLI_ONPREM_VERY_LONG_TIMEOUT", "3600")
+)  # 60분
 
 
 def run_command(
