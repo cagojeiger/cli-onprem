@@ -157,7 +157,7 @@ def calculate_sha256_manifest(
                 for chunk in iter(lambda: f.read(8192), b""):
                     sha256.update(chunk)
 
-            filename = path.name
+            filename = str(path.relative_to(directory))
             hash_value = sha256.hexdigest()
             manifest.append((filename, hash_value))
 

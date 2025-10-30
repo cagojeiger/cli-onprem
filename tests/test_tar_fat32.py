@@ -114,6 +114,34 @@ def test_calculate_sha256_manifest() -> None:
         assert len(manifest[1][1]) == 64
 
 
+def test_calculate_sha256_manifest_with_subdirectory() -> None:
+    """Test calculating SHA256 manifest with files in subdirectory."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = Path(tmpdir)
+
+        # 하위 디렉터리 생성
+        parts_dir = tmp_path / "parts"
+        parts_dir.mkdir()
+
+        # 하위 디렉터리에 파일 생성
+        file1 = parts_dir / "0000.part"
+        file1.write_bytes(b"content1")
+
+        file2 = parts_dir / "0001.part"
+        file2.write_bytes(b"content2")
+
+        # parts/* 패턴으로 매니페스트 계산
+        manifest = calculate_sha256_manifest(tmp_path, "parts/*")
+
+        assert len(manifest) == 2
+        # 경로가 "parts/0000.part" 형식으로 유지되어야 함
+        assert manifest[0][0] == "parts/0000.part"
+        assert manifest[1][0] == "parts/0001.part"
+        # 해시 길이 확인
+        assert len(manifest[0][1]) == 64
+        assert len(manifest[1][1]) == 64
+
+
 def test_write_manifest_file() -> None:
     """Test writing manifest file."""
     with tempfile.TemporaryDirectory() as tmpdir:
