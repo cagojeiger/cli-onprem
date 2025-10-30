@@ -29,7 +29,11 @@ def create_tar_archive(input_path: Path, output_path: Path, parent_dir: Path) ->
 
     try:
         subprocess.run(
-            cmd, check=True, capture_output=True, text=True, timeout=1800  # 디스크 I/O에 최대 30분
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=1800,  # 디스크 I/O에 최대 30분
         )
         logger.info(f"압축 완료: {output_path}")
     except subprocess.CalledProcessError as e:
@@ -83,7 +87,11 @@ def split_file(
 
     try:
         subprocess.run(
-            cmd, check=True, capture_output=True, text=True, timeout=1800  # 파일 분할에 최대 30분
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=1800,  # 파일 분할에 최대 30분
         )
 
         # 생성된 파일들 찾기
@@ -291,7 +299,11 @@ def get_directory_size_mb(path: Path) -> int:
 
     try:
         result = subprocess.run(
-            cmd, check=True, capture_output=True, text=True, timeout=300  # 디렉터리 크기 계산에 최대 5분
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=300,  # 디렉터리 크기 계산에 최대 5분
         )
         size_mb = int(result.stdout.split()[0])
         return size_mb

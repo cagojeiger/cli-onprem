@@ -141,5 +141,7 @@ def render_template(
     logger.info(f"차트 템플릿 렌더링 중: {chart_dir}")
     logger.info(f"실행 명령어: {' '.join(cmd)}")
 
-    result = shell.run_command(cmd, capture_output=True, timeout=300)  # 템플릿 렌더링에 최대 5분
+    result = shell.run_command(
+        cmd, capture_output=True, timeout=300
+    )  # 템플릿 렌더링에 최대 5분
     return result.stdout if result.stdout else ""

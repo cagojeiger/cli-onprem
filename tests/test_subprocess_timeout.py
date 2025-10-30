@@ -41,9 +41,7 @@ def test_timeout_env_var_override():
 
 def test_long_timeout_env_var_override():
     """환경 변수로 LONG_TIMEOUT을 재정의할 수 있는지 확인."""
-    with mock.patch.dict(
-        os.environ, {"CLI_ONPREM_LONG_TIMEOUT": "7200"}
-    ):
+    with mock.patch.dict(os.environ, {"CLI_ONPREM_LONG_TIMEOUT": "7200"}):
         import importlib
 
         importlib.reload(shell)
@@ -90,9 +88,7 @@ def test_run_command_with_none_timeout():
 def test_timeout_expired_raises_command_error():
     """타임아웃 발생 시 CommandError로 변환되는지 확인."""
     with mock.patch("subprocess.run") as mock_run:
-        mock_run.side_effect = subprocess.TimeoutExpired(
-            cmd=["sleep", "10"], timeout=1
-        )
+        mock_run.side_effect = subprocess.TimeoutExpired(cmd=["sleep", "10"], timeout=1)
 
         with pytest.raises(CommandError, match="타임아웃"):
             shell.run_command(["sleep", "10"], timeout=1)
@@ -101,9 +97,7 @@ def test_timeout_expired_raises_command_error():
 def test_timeout_error_message_includes_hint():
     """타임아웃 에러 메시지에 해결 방법 힌트가 포함되는지 확인."""
     with mock.patch("subprocess.run") as mock_run:
-        mock_run.side_effect = subprocess.TimeoutExpired(
-            cmd=["sleep", "10"], timeout=1
-        )
+        mock_run.side_effect = subprocess.TimeoutExpired(cmd=["sleep", "10"], timeout=1)
 
         with pytest.raises(CommandError, match="CLI_ONPREM_LONG_TIMEOUT"):
             shell.run_command(["sleep", "10"], timeout=1)
