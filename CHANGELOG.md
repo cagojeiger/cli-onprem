@@ -2,6 +2,37 @@
 
 
 
+## v2.2.1 (2025-10-30)
+
+### Fix
+
+* fix: correct manifest path references for tar-fat32 restore
+
+tar-fat32 pack 명령으로 생성된 manifest가 하위 디렉터리 경로를 포함하지 않아
+restore 시 sha256sum 검증이 실패하는 버그 수정
+
+**문제:**
+- Pack: parts/0000.part 파일 생성
+- Manifest: "0000.part" (경로 누락)
+- Restore: sha256sum -c가 "./0000.part"를 찾을 수 없음
+
+**해결:**
+- calculate_sha256_manifest()에서 path.name 대신 path.relative_to(directory) 사용
+- 이제 manifest에 "parts/0000.part" 형식으로 올바른 경로 기록
+
+**변경사항:**
+- src/cli_onprem/services/archive.py:160
+  - filename = path.name → filename = str(path.relative_to(directory))
+- tests/test_tar_fat32.py
+  - 하위 디렉터리 경로 검증 테스트 추가 (197 tests passing)
+
+이제 tar-fat32 pack/restore가 정상 작동합니다.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`f840f83`](https://github.com/cagojeiger/cli-onprem/commit/f840f83a80e3a98ea9ca6c9f7125550c6aff545b))
+
+
 ## v2.2.0 (2025-10-30)
 
 ### Feature
