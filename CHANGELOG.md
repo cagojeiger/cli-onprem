@@ -2,6 +2,42 @@
 
 
 
+## v2.1.0 (2025-10-30)
+
+### Feature
+
+* feat: improve error handling with detailed context and retry logic
+
+- Extend CommandError with command, stderr, and exit_code fields
+- Add TransientError and PermanentError for retry classification
+- Implement _parse_docker_error() for user-friendly Korean error messages
+  - Authentication errors with login guidance
+  - Image not found with troubleshooting steps
+  - Network errors with connectivity checks
+  - Disk full with cleanup suggestions
+- Implement _is_retryable_error() to detect transient network issues
+- Improve pull_image() retry logic:
+  - Detect more network error patterns (timeout, connection, lookup, etc.)
+  - Use exponential backoff (2, 4, 8 seconds)
+  - Raise TransientError/PermanentError appropriately
+- Add 19 new tests for error parsing and retry logic
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`2438c50`](https://github.com/cagojeiger/cli-onprem/commit/2438c502904d00b6929a4693d797c44586b83d8b))
+
+### Style
+
+* style: fix line length violations in test_docker_error_parsing.py
+
+- Split long error message strings into multiple lines
+- Fixes E501 (line too long) errors in CI
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`4fcfeb0`](https://github.com/cagojeiger/cli-onprem/commit/4fcfeb0bdafbf79ebc6a76179753dc4a74897ca0))
+
+
 ## v2.0.0 (2025-10-30)
 
 ### Breaking
