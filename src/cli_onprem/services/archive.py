@@ -117,26 +117,42 @@ def calculate_sha256_manifest(
     Raises:
         CommandError: 해시 계산 실패
     """
+    import glob
+    import hashlib
+
     logger.info(f"{directory} 내 파일들의 SHA256 해시 계산 중...")
 
-    cmd = f"cd {directory} && sha256sum {pattern}"
+    # glob으로 안전하게 파일 찾기 (shell injection 방지)
+    search_pattern = str(directory / pattern)
+    files = sorted(glob.glob(search_pattern))
 
-    try:
-        result = subprocess.run(
-            ["sh", "-c", cmd], check=True, capture_output=True, text=True
+    if not files:
+        raise CommandError(
+            f"패턴과 일치하는 파일이 없습니다: {pattern} (경로: {directory})"
         )
 
-        manifest = []
-        for line in result.stdout.strip().split("\n"):
-            if line:
-                hash_value, filename = line.split(None, 1)
-                manifest.append((filename, hash_value))
+    manifest = []
+    try:
+        for file_path in files:
+            path = Path(file_path)
+            if not path.is_file():
+                continue
+
+            # Python hashlib로 안전하게 해시 계산
+            sha256 = hashlib.sha256()
+            with open(path, "rb") as f:
+                for chunk in iter(lambda: f.read(8192), b""):
+                    sha256.update(chunk)
+
+            filename = path.name
+            hash_value = sha256.hexdigest()
+            manifest.append((filename, hash_value))
 
         logger.info(f"해시 계산 완료: {len(manifest)}개 파일")
         return manifest
 
-    except subprocess.CalledProcessError as e:
-        raise CommandError(f"해시 계산 실패: {e.stderr}") from e
+    except OSError as e:
+        raise CommandError(f"해시 계산 실패: {e}") from e
 
 
 def write_manifest_file(manifest: List[Tuple[str, str]], output_path: Path) -> None:
@@ -187,15 +203,34 @@ def merge_files(parts_dir: Path, output_path: Path, pattern: str = "*") -> None:
     Raises:
         CommandError: 파일 병합 실패
     """
+    import glob
+
     logger.info("조각 파일 병합 중...")
 
-    cmd = f"cat {parts_dir}/{pattern} > {output_path}"
+    # glob으로 안전하게 파일 찾기 (shell injection 방지)
+    search_pattern = str(parts_dir / pattern)
+    files = sorted(glob.glob(search_pattern))
+
+    if not files:
+        raise CommandError(f"병합할 파일이 없습니다: {pattern} (경로: {parts_dir})")
 
     try:
-        subprocess.run(["sh", "-c", cmd], check=True, capture_output=True, text=True)
+        # Python file I/O로 안전하게 병합
+        with open(output_path, "wb") as outfile:
+            for file_path in files:
+                path = Path(file_path)
+                if not path.is_file():
+                    continue
+
+                with open(path, "rb") as infile:
+                    # 큰 파일을 위해 chunk 단위로 복사
+                    for chunk in iter(lambda: infile.read(1024 * 1024), b""):
+                        outfile.write(chunk)
+
         logger.info(f"파일 병합 완료: {output_path}")
-    except subprocess.CalledProcessError as e:
-        raise CommandError(f"파일 병합 실패: {e.stderr}") from e
+
+    except OSError as e:
+        raise CommandError(f"파일 병합 실패: {e}") from e
 
 
 def extract_tar_archive(
