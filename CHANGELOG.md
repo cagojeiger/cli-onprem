@@ -2,6 +2,24 @@
 
 
 
+## v1.5.0 (2025-10-30)
+
+### Feature
+
+* feat: add Python 3.13 support and remove unused pydantic dependency
+
+- Add Python 3.13 to CI test matrix (3.9-3.13)
+- Update release workflow to use Python 3.13
+- Add Python 3.13 classifier to pyproject.toml
+- Update tool configurations (ruff, mypy) for Python 3.13
+- Remove unused pydantic dependency from dependencies
+- Update Black target-version to py312 (latest supported by Black)
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com> ([`a6dd5eb`](https://github.com/cagojeiger/cli-onprem/commit/a6dd5ebbb5e1a94040361c7a9d14f18dcb6b5c7a))
+
+
 ## v1.4.0 (2025-06-27)
 
 ### Documentation
