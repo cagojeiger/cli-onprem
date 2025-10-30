@@ -115,6 +115,7 @@ def test_pull_image_with_arch() -> None:
             check=True,
             capture_output=True,
             text=True,
+            timeout=3600,
         )
 
 

@@ -195,6 +195,7 @@ def test_helm_dependency_update() -> None:
             check=False,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            timeout=600,
         )
 
 

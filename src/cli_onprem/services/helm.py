@@ -96,6 +96,7 @@ def update_dependencies(chart_dir: pathlib.Path) -> None:
         check=False,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        timeout=600,  # 차트 다운로드에 최대 10분
     )
 
     logger.info("의존성 업데이트 완료")
@@ -140,5 +141,5 @@ def render_template(
     logger.info(f"차트 템플릿 렌더링 중: {chart_dir}")
     logger.info(f"실행 명령어: {' '.join(cmd)}")
 
-    result = shell.run_command(cmd, capture_output=True)
+    result = shell.run_command(cmd, capture_output=True, timeout=300)  # 템플릿 렌더링에 최대 5분
     return result.stdout if result.stdout else ""

@@ -11,7 +11,7 @@ import yaml
 from cli_onprem.core.errors import CommandError, DependencyError
 from cli_onprem.core.logging import get_logger
 from cli_onprem.core.types import ImageSet
-from cli_onprem.utils.shell import check_command_exists
+from cli_onprem.utils.shell import LONG_TIMEOUT, check_command_exists
 
 logger = get_logger("services.docker")
 
@@ -370,6 +370,7 @@ def check_image_exists(reference: str) -> bool:
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            timeout=30,  # 메타데이터 조회는 빠름
         )
         return True
     except subprocess.CalledProcessError:
@@ -395,7 +396,9 @@ def pull_image(reference: str, arch: str = "linux/amd64", max_retries: int = 3) 
 
     while retry_count <= max_retries:
         try:
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            subprocess.run(
+                cmd, check=True, capture_output=True, text=True, timeout=LONG_TIMEOUT
+            )
             logger.info(f"이미지 {reference} 다운로드 완료")
             return
         except subprocess.CalledProcessError as e:
@@ -428,7 +431,9 @@ def save_image(reference: str, output_path: str) -> None:
     cmd = ["docker", "save", "-o", output_path, reference]
 
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        subprocess.run(
+            cmd, check=True, capture_output=True, text=True, timeout=LONG_TIMEOUT
+        )
         logger.info(f"이미지 저장 완료: {output_path}")
     except subprocess.CalledProcessError as e:
         raise CommandError(f"이미지 저장 실패: {e.stderr}") from e
@@ -446,7 +451,9 @@ def save_image_to_stdout(reference: str) -> None:
     cmd = ["docker", "save", reference]
 
     try:
-        subprocess.run(cmd, check=True, stderr=subprocess.PIPE, text=True)
+        subprocess.run(
+            cmd, check=True, stderr=subprocess.PIPE, text=True, timeout=LONG_TIMEOUT
+        )
     except subprocess.CalledProcessError as e:
         raise CommandError(f"이미지 저장 실패: {e.stderr}") from e
 
@@ -466,6 +473,7 @@ def list_local_images() -> List[str]:
             capture_output=True,
             text=True,
             check=True,
+            timeout=30,  # 로컬 이미지 조회는 빠름
         )
         return result.stdout.splitlines()
     except subprocess.CalledProcessError as e:
