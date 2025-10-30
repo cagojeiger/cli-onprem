@@ -11,6 +11,7 @@ from typing_extensions import Annotated
 from cli_onprem.core.errors import CommandError, DependencyError
 from cli_onprem.core.logging import get_logger, init_logging, set_log_level
 from cli_onprem.services.docker import (
+    check_docker_daemon,
     check_docker_installed,
     generate_tar_filename,
     list_local_images,
@@ -35,9 +36,10 @@ logger = get_logger("commands.docker_tar")
 
 
 def _check_docker_cli() -> None:
-    """Docker CLI 설치 확인 및 에러 처리."""
+    """Docker CLI 설치 및 daemon 상태 확인."""
     try:
         check_docker_installed()
+        check_docker_daemon()
     except DependencyError as e:
         console.print(f"[bold red]오류: {e}[/bold red]")
         raise typer.Exit(code=1) from e

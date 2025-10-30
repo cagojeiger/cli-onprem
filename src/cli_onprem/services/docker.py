@@ -283,6 +283,48 @@ def check_docker_installed() -> None:
         )
 
 
+def check_docker_daemon() -> None:
+    """Docker daemon이 실행 중인지 확인합니다.
+
+    빠른 실패(fail-fast)를 위해 Docker 명령 실행 전에 호출합니다.
+
+    Raises:
+        DependencyError: Docker daemon이 실행되지 않거나 응답하지 않는 경우
+    """
+    try:
+        subprocess.run(
+            ["docker", "info"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=QUICK_TIMEOUT,
+        )
+        logger.debug("Docker daemon 상태 확인 완료")
+    except subprocess.TimeoutExpired as e:
+        raise DependencyError(
+            "Docker daemon이 응답하지 않습니다.\n\n"
+            "해결 방법:\n"
+            "  1. Docker Desktop이 실행 중인지 확인하세요\n"
+            "  2. Docker daemon을 재시작하세요\n"
+            "  3. 시스템 리소스(CPU, 메모리)를 확인하세요"
+        ) from e
+    except subprocess.CalledProcessError as e:
+        stderr = e.stderr or ""
+        raise DependencyError(
+            "Docker daemon이 실행되지 않았습니다.\n\n"
+            "해결 방법:\n"
+            "  1. Docker Desktop을 시작하세요\n"
+            "  2. Linux: sudo systemctl start docker\n"
+            "  3. macOS/Windows: Docker Desktop 애플리케이션 실행\n\n"
+            f"상세 오류:\n{stderr}"
+        ) from e
+    except FileNotFoundError as e:
+        raise DependencyError(
+            "Docker CLI가 설치되어 있지 않습니다. "
+            "설치 방법: https://docs.docker.com/engine/install/"
+        ) from e
+
+
 def _parse_docker_error(stderr: str, reference: str) -> str:
     """Docker 에러를 사용자 친화적인 한국어 메시지로 변환.
 
