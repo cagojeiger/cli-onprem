@@ -8,7 +8,12 @@ from typing import Any, List, Optional, Set, Tuple
 
 import yaml
 
-from cli_onprem.core.errors import CommandError, DependencyError
+from cli_onprem.core.errors import (
+    CommandError,
+    DependencyError,
+    PermanentError,
+    TransientError,
+)
 from cli_onprem.core.logging import get_logger
 from cli_onprem.core.types import ImageSet
 from cli_onprem.utils.shell import (
@@ -278,6 +283,90 @@ def check_docker_installed() -> None:
         )
 
 
+def _parse_docker_error(stderr: str, reference: str) -> str:
+    """Docker 에러를 사용자 친화적인 한국어 메시지로 변환.
+
+    Args:
+        stderr: Docker CLI의 stderr 출력
+        reference: 이미지 참조 (예: nginx:latest)
+
+    Returns:
+        파싱된 사용자 친화적 메시지
+    """
+    stderr_lower = stderr.lower()
+
+    # 인증 관련 오류
+    if "denied" in stderr_lower or "unauthorized" in stderr_lower:
+        return (
+            f"이미지 접근 권한이 없습니다: {reference}\n\n"
+            "해결 방법:\n"
+            "  1. Private 레지스트리인 경우 로그인하세요: docker login\n"
+            "  2. 이미지 이름과 태그를 확인하세요\n"
+            "  3. 조직/레포지토리 권한을 확인하세요"
+        )
+
+    # 이미지를 찾을 수 없음
+    if "not found" in stderr_lower or "manifest unknown" in stderr_lower:
+        return (
+            f"이미지를 찾을 수 없습니다: {reference}\n\n"
+            "해결 방법:\n"
+            "  1. 이미지 이름을 확인하세요 (오타 확인)\n"
+            "  2. 태그가 존재하는지 확인하세요\n"
+            "  3. 레지스트리가 올바른지 확인하세요"
+        )
+
+    # 네트워크 관련 오류
+    if any(
+        word in stderr_lower for word in ["timeout", "network", "connection", "lookup"]
+    ):
+        return (
+            f"네트워크 오류로 이미지 다운로드 실패: {reference}\n\n"
+            "해결 방법:\n"
+            "  1. 인터넷 연결을 확인하세요\n"
+            "  2. VPN이나 프록시 설정을 확인하세요\n"
+            "  3. Docker Hub 상태를 확인하세요: https://status.docker.com\n"
+            "  4. 잠시 후 다시 시도하세요"
+        )
+
+    # 디스크 공간 부족
+    if "no space" in stderr_lower or "disk full" in stderr_lower:
+        return (
+            f"디스크 공간 부족으로 이미지 저장 실패: {reference}\n\n"
+            "해결 방법:\n"
+            "  1. 디스크 공간을 확보하세요\n"
+            "  2. 사용하지 않는 Docker 이미지/컨테이너를 정리하세요:\n"
+            "     docker system prune -a"
+        )
+
+    # 기타 오류는 원본 메시지 반환
+    return f"이미지 작업 실패: {reference}\n\n상세 오류:\n{stderr}"
+
+
+def _is_retryable_error(stderr: str) -> bool:
+    """에러가 재시도 가능한지 판단.
+
+    Args:
+        stderr: 명령의 stderr 출력
+
+    Returns:
+        재시도 가능하면 True
+    """
+    retryable_patterns = [
+        "timeout",
+        "connection refused",
+        "connection reset",
+        "temporary failure",
+        "service unavailable",
+        "too many requests",  # Rate limiting
+        "503",  # HTTP 503
+        "i/o timeout",
+        "network",
+    ]
+
+    stderr_lower = stderr.lower()
+    return any(pattern in stderr_lower for pattern in retryable_patterns)
+
+
 def parse_image_reference(reference: str) -> Tuple[str, str, str, str]:
     """Docker 이미지 레퍼런스를 분해합니다.
 
@@ -382,7 +471,9 @@ def check_image_exists(reference: str) -> bool:
 
 
 def pull_image(reference: str, arch: str = "linux/amd64", max_retries: int = 3) -> None:
-    """이미지를 Docker Hub에서 가져옵니다.
+    """이미지를 Docker Hub에서 가져옵니다 (재시도 로직 포함).
+
+    네트워크 관련 일시적 오류는 자동으로 재시도합니다.
 
     Args:
         reference: Docker 이미지 레퍼런스
@@ -390,15 +481,15 @@ def pull_image(reference: str, arch: str = "linux/amd64", max_retries: int = 3) 
         max_retries: 최대 재시도 횟수
 
     Raises:
-        CommandError: 이미지 pull 실패
+        TransientError: 재시도 가능한 일시적 오류
+        PermanentError: 재시도 불가능한 영구적 오류
     """
     logger.info(f"이미지 {reference} 다운로드 중 (아키텍처: {arch})")
     cmd = ["docker", "pull", "--platform", arch, reference]
 
-    retry_count = 0
     last_error = ""
-
-    while retry_count <= max_retries:
+    # 첫 시도(0) + 재시도(1, 2, 3) = 총 max_retries + 1번 시도
+    for attempt in range(0, max_retries + 1):
         try:
             subprocess.run(
                 cmd,
@@ -408,21 +499,32 @@ def pull_image(reference: str, arch: str = "linux/amd64", max_retries: int = 3) 
                 timeout=VERY_LONG_TIMEOUT,
             )
             logger.info(f"이미지 {reference} 다운로드 완료")
-            return
+            return  # 성공
+
         except subprocess.CalledProcessError as e:
-            last_error = e.stderr
-            if "timeout" in last_error.lower() and retry_count < max_retries:
-                retry_count += 1
-                wait_time = 2**retry_count  # 지수 백오프 (2, 4, 8초)
+            last_error = e.stderr or ""
+
+            # 재시도 가능한 에러인지 확인
+            if attempt < max_retries and _is_retryable_error(last_error):
+                wait_time = 2 ** (attempt + 1)  # Exponential backoff: 2, 4, 8초
                 logger.warning(
-                    f"이미지 다운로드 타임아웃, {retry_count}/{max_retries} "
-                    f"재시도 중 ({wait_time}초 대기)..."
+                    f"이미지 다운로드 실패 (시도 {attempt + 1}/{max_retries + 1}). "
+                    f"{wait_time}초 후 재시도... 오류: {last_error[:100]}"
                 )
                 time.sleep(wait_time)
-            else:
-                break
+                continue
 
-    raise CommandError(f"이미지 다운로드 실패: {last_error}")
+            # 재시도 불가능하거나 마지막 시도면 예외 발생
+            friendly_message = _parse_docker_error(last_error, reference)
+
+            if _is_retryable_error(last_error):
+                raise TransientError(
+                    friendly_message, command=cmd, stderr=last_error
+                ) from e
+            else:
+                raise PermanentError(
+                    friendly_message, command=cmd, stderr=last_error
+                ) from e
 
 
 def save_image(reference: str, output_path: str) -> None:
