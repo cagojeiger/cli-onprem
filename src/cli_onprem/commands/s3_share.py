@@ -303,7 +303,11 @@ def sync(
 
     try:
         # AWS CLI 설치 확인
-        from cli_onprem.utils.shell import check_command_exists, run_command
+        from cli_onprem.utils.shell import (
+            LONG_TIMEOUT,
+            check_command_exists,
+            run_command,
+        )
 
         if not check_command_exists("aws"):
             console.print(
@@ -347,7 +351,7 @@ def sync(
         env["AWS_SECRET_ACCESS_KEY"] = creds["aws_secret_key"]
 
         # AWS CLI 실행
-        run_command(cmd, env=env)
+        run_command(cmd, env=env, timeout=LONG_TIMEOUT)
 
         console.print("[bold green]동기화 완료[/bold green]")
 
