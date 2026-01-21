@@ -2,6 +2,36 @@
 
 
 
+## v2.2.2 (2026-01-21)
+
+### Fix
+
+* fix: apply LONG_TIMEOUT to s3-share sync command (#90)
+
+* fix: apply LONG_TIMEOUT to s3-share sync command
+
+The run_command() call in sync was using DEFAULT_TIMEOUT (300s) instead
+of LONG_TIMEOUT, causing CLI_ONPREM_LONG_TIMEOUT environment variable
+to be ignored for large file uploads.
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+
+* test: add sync command timeout verification test
+
+Adds test to verify that run_command is called with timeout=LONG_TIMEOUT
+parameter, ensuring CLI_ONPREM_LONG_TIMEOUT environment variable is respected.
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+
+---------
+
+Co-authored-by: Claude <noreply@anthropic.com> ([`a5c7e36`](https://github.com/cagojeiger/cli-onprem/commit/a5c7e36371eded083dd93da7ee2f98f871bcb827))
+
+
 ## v2.2.1 (2025-10-30)
 
 ### Fix
