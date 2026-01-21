@@ -107,6 +107,34 @@ def test_init_command_with_existing_profile_no_overwrite(
             assert credentials["test_profile"]["aws_access_key"] == "existing_key"
 
 
+def test_sync_command_uses_long_timeout(
+    mock_home_dir: Path,
+    mock_credentials: Path,
+    tmp_path: Path,
+) -> None:
+    """sync 명령어가 LONG_TIMEOUT을 사용하는지 테스트합니다."""
+    # 테스트용 파일 생성
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("test content")
+
+    with (
+        mock.patch("cli_onprem.utils.shell.check_command_exists", return_value=True),
+        mock.patch("cli_onprem.utils.shell.run_command") as mock_run_command,
+    ):
+        runner.invoke(
+            app,
+            ["s3-share", "sync", str(test_file), "--profile", "default"],
+        )
+
+        # run_command가 호출되었는지 확인
+        assert mock_run_command.called
+        # timeout 파라미터가 전달되었는지 확인
+        call_kwargs = mock_run_command.call_args.kwargs
+        assert "timeout" in call_kwargs
+        # LONG_TIMEOUT (기본값 1800) 이 전달되어야 함
+        assert call_kwargs["timeout"] == 1800
+
+
 def test_init_command_with_existing_profile_overwrite(mock_home_dir: Path) -> None:
     """기존 프로파일이 있을 때 덮어쓰기 테스트."""
     config_dir = mock_home_dir / ".cli-onprem"
