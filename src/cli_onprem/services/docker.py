@@ -380,6 +380,21 @@ def _parse_docker_error(stderr: str, reference: str) -> str:
             "     docker system prune -a"
         )
 
+    # containerd manifest 관련 오류 (멀티 아키텍처 이미지 저장 실패)
+    if "unable to create manifests file" in stderr_lower or "content digest" in stderr_lower:
+        return (
+            f"이미지 저장 실패 (containerd 매니페스트 오류): {reference}\n\n"
+            "이 오류는 Docker Desktop의 containerd 이미지 저장소와 "
+            "멀티 아키텍처 이미지 간의 호환성 문제로 발생합니다.\n\n"
+            "해결 방법:\n"
+            "  1. Docker Desktop → Settings → General에서\n"
+            "     'Use containerd for pulling and storing images' 체크 해제\n"
+            "  2. Apply & Restart 후 다시 시도\n\n"
+            "또는 이미지 캐시를 정리 후 재시도:\n"
+            f"  docker rmi {reference}\n"
+            f"  cli-onprem docker-tar save {reference}"
+        )
+
     # 기타 오류는 원본 메시지 반환
     return f"이미지 작업 실패: {reference}\n\n상세 오류:\n{stderr}"
 
@@ -592,7 +607,8 @@ def save_image(reference: str, output_path: str) -> None:
         )
         logger.info(f"이미지 저장 완료: {output_path}")
     except subprocess.CalledProcessError as e:
-        raise CommandError(f"이미지 저장 실패: {e.stderr}") from e
+        friendly_message = _parse_docker_error(e.stderr or "", reference)
+        raise CommandError(friendly_message) from e
 
 
 def save_image_to_stdout(reference: str) -> None:
